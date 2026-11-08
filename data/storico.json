@@ -1,0 +1,107 @@
+{
+ "segnalazioni": [
+  {
+   "k": "GHYE.MI|sbb|2026-11-06",
+   "t": "GHYE.MI",
+   "nome": "Amundi GlbHgYld CrptBnd ESG $ UCITS ETF",
+   "sistema": "sbb",
+   "sistema_nome": "Super Best Buy",
+   "data_segnale": "2026-11-06",
+   "registrata": "2026-11-08",
+   "famiglie": [
+    "Trend",
+    "Momentum",
+    "Indicatori"
+   ],
+   "confluenza": 3,
+   "classifica": {
+    "orizzonte": "20",
+    "eccesso": 0.4,
+    "n": 16,
+    "positivi": 69
+   },
+   "ingresso": null,
+   "esiti": {}
+  },
+  {
+   "k": "UQLTD.MI|adx|2026-11-04",
+   "t": "UQLTD.MI",
+   "nome": "UBS Factor MSCI USA Quality Screened UCITS ETF USD dis",
+   "sistema": "adx",
+   "sistema_nome": "ADX",
+   "data_segnale": "2026-11-04",
+   "registrata": "2026-11-08",
+   "famiglie": [
+    "Trend",
+    "Momentum",
+    "Indicatori"
+   ],
+   "confluenza": 3,
+   "classifica": {
+    "orizzonte": "20",
+    "eccesso": 0.7,
+    "n": 12,
+    "positivi": 100
+   },
+   "ingresso": {
+    "data": "2026-11-05",
+    "prezzo": 64.88
+   },
+   "esiti": {}
+  },
+  {
+   "k": "EXXV.DE|adx|2026-11-02",
+   "t": "EXXV.DE",
+   "nome": "IS.DJ EUROZ.SUST.SC.U.ETF",
+   "sistema": "adx",
+   "sistema_nome": "ADX",
+   "data_segnale": "2026-11-02",
+   "registrata": "2026-11-08",
+   "famiglie": [
+    "Trend",
+    "Momentum",
+    "Indicatori"
+   ],
+   "confluenza": 3,
+   "classifica": {
+    "orizzonte": "20",
+    "eccesso": 2.2,
+    "n": 13,
+    "positivi": 69
+   },
+   "ingresso": {
+    "data": "2026-11-03",
+    "prezzo": 22.085
+   },
+   "esiti": {}
+  },
+  {
+   "k": "XAT1.MI|adx|2026-11-04",
+   "t": "XAT1.MI",
+   "nome": "Invesco USD AT1 CoCo Bond UCITS ETF",
+   "sistema": "adx",
+   "sistema_nome": "ADX",
+   "data_segnale": "2026-11-04",
+   "registrata": "2026-11-08",
+   "famiglie": [
+    "Trend",
+    "Indicatori"
+   ],
+   "confluenza": 2,
+   "classifica": {
+    "orizzonte": "20",
+    "eccesso": 1.5,
+    "n": 17,
+    "positivi": 76
+   },
+   "ingresso": {
+    "data": "2026-11-05",
+    "prezzo": 15.748
+   },
+   "esiti": {}
+  }
+ ],
+ "chiuse": [],
+ "versione": 1,
+ "aggiornato": "2026-11-08 15:46 UTC"
+}

@@ -1,1 +1,41 @@
+name: Aggiorna arrotation
 
+on:
+  schedule:
+    - cron: '30 20 * * 1-5'   # lun-ven, dopo il run di big (17:30 UTC, fino a ~3 ore)
+    - cron: '0 11 * * 6'      # sabato, dopo la classifica di big (06:00 UTC)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: arrotation
+  cancel-in-progress: false
+
+jobs:
+  agente:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Dipendenze
+        run: pip install numpy reportlab
+      - name: Esegui agente
+        run: python scripts/agente.py
+      - name: Salva i dati (anche se l'agente ha segnalato un errore)
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data
+          if git diff --cached --quiet; then echo "nessuna modifica"; exit 0; fi
+          git commit -m "Aggiornamento arrotation"
+          for i in 1 2 3; do
+            git pull --rebase && git push && exit 0
+            sleep 5
+          done
+          exit 1

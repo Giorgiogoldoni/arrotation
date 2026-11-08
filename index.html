@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>arrotation – candidati da verificare</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+body{margin:0;background:#fff;color:#1a1a1a;font:14px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif}
+header,.bar,.wrap,.box{padding:12px 18px}header{padding-bottom:0}h1{margin:0;font-size:22px}h2{margin:0 0 6px;font-size:16px}.sub{color:#666;font-size:12px;margin-top:2px}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}input,button{font:inherit;padding:6px 10px;border:1px solid #c9ccd1;border-radius:6px;background:#fff}button{cursor:pointer}button:hover{background:#f3f4f6}
+.wrap{overflow-x:auto}table{border-collapse:collapse;width:100%}th,td{padding:6px 8px;border-bottom:1px solid #eceef1;text-align:left;white-space:nowrap}th{background:#fff;font-weight:600;border-bottom:2px solid #d5d8dd}
+td.n{text-align:right}.neg{color:#c0392b}.pos{color:#1e8449}a{color:#1d4ed8;text-decoration:none}a:hover{text-decoration:underline}.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px}
+.tag{font-size:11px;border-radius:4px;padding:1px 5px;margin-left:5px;background:#eee;color:#555}.ok{background:#e8f5e9;color:#1e8449}.am{background:#fff3e0;color:#b45309}
+.box{margin:8px 18px;border-radius:8px;font-size:13px}.err{background:#fde8e8;color:#8a1c14;border:1px solid #f3b8b3}.warn{background:#fff3e0;color:#7a4a05;border:1px solid #f1d19a}.info{background:#f4f6f8;color:#333;border:1px solid #dfe3e8}
+.box ul{margin:4px 0 0;padding-left:18px}.kpi{display:flex;flex-wrap:wrap;gap:18px;padding:4px 18px 8px}.kpi div{min-width:120px}.kpi b{display:block;font-size:20px}.kpi span{font-size:12px;color:#666}
+.vuoto{padding:10px 8px;color:#666}.note{font-size:12px;color:#555;padding:4px 18px 16px;max-width:1100px}
+</style></head><body>
+<header><h1>arrotation – candidati da verificare</h1><div class="sub" id="sub">Caricamento…</div></header>
+<div class="box info"><b>Screening automatico, non una raccomandazione.</b> Legge i dati pubblici di <a href="https://giorgiogoldoni.github.io/big/">big</a> e applica criteri fissi (vedi Regole PDF). Non è consulenza, non considera obiettivi, costi, tasse o liquidità di nessun investitore: ogni nominativo va verificato prima di qualunque decisione.</div>
+<div id="avvisi"></div>
+<div class="bar"><input id="q" placeholder="Cerca ticker, nome, ISIN" size="24"><button id="xls">Scarica Excel</button><a href="data/regole_arrotation.pdf" target="_blank"><button>Regole PDF</button></a><a href="https://giorgiogoldoni.github.io/big/"><button>Apri big</button></a><span id="cnt" class="sub"></span></div>
+<div class="kpi" id="kpi"></div>
+<div class="wrap"><h2>Candidati</h2><table><thead><tr><th>Ticker</th><th>Nome</th><th>Emittente</th><th>Sistema di riferimento</th><th>Segnale del</th><th>Confluenza</th><th>Stato Trend</th><th>Eccesso classifica +20</th><th>Prezzo</th><th>Var %</th><th>Ultima barra</th></tr></thead><tbody id="tc"></tbody></table></div>
+<div class="wrap"><h2>Uscite recenti (stato ESCI in big)</h2><table><thead><tr><th>Ticker</th><th>Nome</th><th>Emittente</th><th>Ingresso Trend</th><th>Uscita</th><th>Guadagno</th><th>Prezzo</th><th>Ultima barra</th></tr></thead><tbody id="tu"></tbody></table></div>
+<div class="wrap"><h2>Esiti reali delle segnalazioni</h2><table><thead><tr><th>Orizzonte</th><th>Segnalazioni misurate</th><th>% positive</th><th>Rendimento mediano</th><th>Eccesso mediano</th></tr></thead><tbody id="ts"></tbody></table></div>
+<div class="wrap"><h2>Segnalazioni in corso</h2><table><thead><tr><th>Ticker</th><th>Nome</th><th>Sistema</th><th>Segnale del</th><th>Ingresso (apertura dopo)</th><th>+5 barre</th><th>+10 barre</th><th>+20 barre</th><th>+60 barre</th></tr></thead><tbody id="th"></tbody></table></div>
+<div class="note" id="note"></div>
+<script>
+const $=id=>document.getElementById(id),esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])).replace(/'/g,"’");
+const f=(x,d=2)=>x==null?"–":(x>0?"+":"")+Number(x).toFixed(d),cl=x=>x==null?"":x<0?"neg":"pos";
+let S=null,H=null;
+const get=u=>fetch(u,{cache:"no-cache"}).then(r=>r.ok?r.json():null).catch(()=>null);
+Promise.all([get("data/selezione.json"),get("data/storico.json")]).then(([s,h])=>{S=s;H=h;draw()});
+function draw(){
+ if(!S){$("sub").textContent="Dati non ancora disponibili: avvia il workflow “Aggiorna arrotation” da Actions.";return}
+ const q=$("q").value.toLowerCase(),ok=x=>!q||(x.t+x.nome+(x.isin||"")).toLowerCase().includes(q);
+ $("sub").textContent="Generato "+S.generato+" · dati di big del "+(S.big_gen||"n.d.")+" · classifica di big del "+(S.classifica_gen||"n.d.");
+ const av=[];if(S.stato=="errore")av.push(["err","Dati non aggiornati",S.avvisi]);else if(S.stato=="dati_vecchi")av.push(["err","Dati di big vecchi",S.avvisi]);else if((S.avvisi||[]).length)av.push(["warn","Avvisi",S.avvisi]);
+ $("avvisi").innerHTML=av.map(a=>`<div class="box ${a[0]}"><b>${a[1]}</b><ul>${a[2].map(x=>"<li>"+esc(x)+"</li>").join("")}</ul></div>`).join("");
+ const r=S.riepilogo||{};
+ $("kpi").innerHTML=[[r.candidati,"candidati"],[r.uscite,"uscite recenti"],[r.affidabili,"ETF “affidabili” su "+r.misurabili+" misurabili"],[r.attesi_per_caso,"attesi per solo caso (stima grezza)"],[r.segnalazioni_aperte,"segnalazioni in corso"],[r.segnalazioni_chiuse,"segnalazioni concluse"]].map(k=>`<div><b>${k[0]==null?"–":k[0]}</b><span>${k[1]}</span></div>`).join("");
+ const C=(S.candidati||[]).filter(ok),U=(S.uscite||[]).filter(ok);
+ $("cnt").textContent=C.length+" candidati, "+U.length+" uscite";
+ $("tc").innerHTML=C.length?C.map(c=>`<tr><td><a href="${esc(c.grafico)}">${esc(c.t)}</a></td><td>${esc(c.nome)}</td><td>${esc(c.emittente)}</td><td><i class="dot" style="background:${esc(c.colore)}"></i>${esc(c.sistema_nome)}</td><td>${esc(c.data_segnale)}</td><td title="${esc(c.famiglie.join(", "))}">${c.confluenza} (${esc(c.famiglie.join(", "))})</td><td><span class="tag ${c.stato=="TIENI"?"ok":c.stato=="ESCI"?"am":""}">${esc(c.stato)}</span></td><td class="n ${cl(c.eccesso)}" title="${esc(c.n_segnali)} segnali, ${esc(c.positivi)}% positivi">${f(c.eccesso,1)}%</td><td class="n">${esc(c.prezzo)}</td><td class="n ${cl(c.var)}">${esc(c.var)}</td><td>${esc(c.ultima_barra)}</td></tr>`).join(""):`<tr><td colspan="11" class="vuoto">Nessun candidato oggi: nessun ETF soddisfa tutti i criteri. È un risultato valido.</td></tr>`;
+ $("tu").innerHTML=U.length?U.map(u=>`<tr><td><a href="${esc(u.grafico)}">${esc(u.t)}</a></td><td>${esc(u.nome)}</td><td>${esc(u.emittente)}</td><td>${esc(u.ingresso)}</td><td>${esc(u.uscita)}</td><td class="n ${cl(u.guadagno)}">${f(u.guadagno)}%</td><td class="n">${esc(u.prezzo)}</td><td>${esc(u.ultima_barra)}</td></tr>`).join(""):`<tr><td colspan="8" class="vuoto">Nessuna uscita recente.</td></tr>`;
+ const st=S.statistiche||{};
+ $("ts").innerHTML=Object.keys(st).map(k=>{const x=st[k];return `<tr><td>+${k} barre</td><td class="n">${x.n}</td><td class="n">${x.positivi==null?"–":x.positivi+"%"}</td><td class="n ${cl(x.mediana)}">${x.mediana==null?"–":f(x.mediana)+"%"}</td><td class="n ${cl(x.eccesso_mediano)}">${x.eccesso_mediano==null?"–":f(x.eccesso_mediano)+"%"}</td></tr>`}).join("");
+ const E=((H&&H.segnalazioni)||[]).filter(e=>ok({t:e.t,nome:e.nome,isin:""}));
+ const cella=x=>x?`<td class="n ${cl(x.ret)}" title="Eccesso ${x.eccesso==null?"n.d.":f(x.eccesso)+"%"} · chiusura del ${esc(x.data)}">${f(x.ret)}%</td>`:`<td class="n sub">in attesa</td>`;
+ $("th").innerHTML=E.length?E.map(e=>`<tr><td>${esc(e.t)}</td><td>${esc(e.nome)}</td><td>${esc(e.sistema_nome)}</td><td>${esc(e.data_segnale)}</td><td class="n">${e.ingresso?esc(e.ingresso.data)+" a "+esc(e.ingresso.prezzo):"in attesa"}</td>${[5,10,20,60].map(n=>cella(e.esiti&&e.esiti[n])).join("")}</tr>`).join(""):`<tr><td colspan="9" class="vuoto">Nessuna segnalazione in corso.</td></tr>`;
+ $("note").innerHTML="Esito = chiusura N barre dopo il segnale rispetto all’apertura della barra successiva; eccesso = esito meno la mediana dello stesso calcolo sull’ETF negli ultimi 2 anni. Rendimenti lordi, costi ignorati, nessuna previsione. Gli esiti valgono solo con molte segnalazioni e molti mesi di storia: con pochi casi sono aneddoti. Ci si attende che una parte degli ETF “affidabili” lo sia per solo caso (stima grezza nei riquadri sopra). Nessun filtro di liquidità. I grafici si aprono su big."}
+$("q").addEventListener("input",draw);
+$("xls").onclick=()=>{if(!S)return;const wb=XLSX.utils.book_new(),add=(n,a)=>XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(a.length?a:[{Nota:"nessun dato"}]),n);
+ add("Candidati",(S.candidati||[]).map(c=>({Ticker:c.t,Nome:c.nome,ISIN:c.isin,Emittente:c.emittente,Borsa:c.borsa,"Sistema di riferimento":c.sistema_nome,"Segnale del":c.data_segnale,Confluenza:c.confluenza,Famiglie:c.famiglie.join(", "),"Stato Trend":c.stato,"Eccesso classifica +20 %":c.eccesso,"Segnali classifica":c.n_segnali,"% positivi classifica":c.positivi,Prezzo:c.prezzo,"Var %":c.var,"Ultima barra":c.ultima_barra})));
+ add("Uscite",(S.uscite||[]).map(u=>({Ticker:u.t,Nome:u.nome,Emittente:u.emittente,"Ingresso Trend":u.ingresso,Uscita:u.uscita,"Guadagno %":u.guadagno,Prezzo:u.prezzo,"Ultima barra":u.ultima_barra})));
+ add("Esiti aggregati",Object.keys(S.statistiche||{}).map(k=>({Orizzonte:"+"+k+" barre",Segnalazioni:S.statistiche[k].n,"% positive":S.statistiche[k].positivi,"Rendimento mediano %":S.statistiche[k].mediana,"Eccesso mediano %":S.statistiche[k].eccesso_mediano})));
+ add("In corso",((H&&H.segnalazioni)||[]).map(e=>{const o={Ticker:e.t,Nome:e.nome,Sistema:e.sistema_nome,"Segnale del":e.data_segnale,"Ingresso data":e.ingresso?e.ingresso.data:"","Ingresso prezzo":e.ingresso?e.ingresso.prezzo:""};[5,10,20,60].forEach(n=>{const x=e.esiti&&e.esiti[n];o["+"+n+" rend %"]=x?x.ret:"";o["+"+n+" eccesso %"]=x&&x.eccesso!=null?x.eccesso:""});return o}));
+ add("Concluse",((H&&H.chiuse)||[]).map(c=>({Ticker:c.t,Sistema:c.sistema,"Segnale del":c.data_segnale,"+5 %":c.ret["5"],"+10 %":c.ret["10"],"+20 %":c.ret["20"],"+60 %":c.ret["60"]})));
+ add("Avvisi",(S.avvisi||[]).map(a=>({Avviso:a})));XLSX.writeFile(wb,"arrotation.xlsx")};
+</script></body></html>

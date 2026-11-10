@@ -18,4 +18,4 @@ Ogni giorno lavorativo alle 20:30 UTC legge `index.json` e `classifica_sintesi.j
 Se i dati di big mancano o cambiano formato il workflow fallisce (GitHub ti avvisa per email), la pagina mostra l'ultimo calcolo valido con un avviso rosso.
 
 ## Parametri
-Tutti in cima a `scripts/agente.py`: orizzonte della classifica, finestra dei segnali, confluenza minima, famiglie, soglie di vecchiaia dei dati.
+Tutti in cima a `scripts/agente.py`: orizzonte della classifica, finestra dei segnali, confluenza minima, minimo di segnali storici del sistema di riferimento (`MIN_SEGNALI_STORICI`, ora 15), famiglie, soglie di vecchiaia dei dati.

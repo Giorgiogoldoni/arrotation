@@ -22,6 +22,7 @@ MAX_VECCHIAIA_GG_LAV = 3                    # giorni lavorativi: oltre, i dati d
 MAX_VECCHIAIA_CLASSIFICA_GG = 9             # giorni di calendario: la classifica di big si aggiorna il sabato
 ORIZZONTI_ESITO = (5, 10, 20, 60)           # barre dopo il segnale su cui si misura l'esito reale
 CASO_AFFIDABILI_PCT = 2.0                   # % di "affidabili" attesa per solo caso a +20 barre (calibrazione dichiarata da big, 150 serie casuali)
+MIN_SEGNALI_STORICI = 15                    # segnali storici minimi del sistema di riferimento su quell'ETF (da classifica di big): sotto, il giudizio "affidabile" poggia su troppo pochi casi
 MIN_BASE = 30                               # osservazioni minime per la mediana di riferimento dell'ETF
 SCADENZA_APERTE_GG = 400                    # segnalazioni mai risolte oltre questo limite passano in archivio
 FAMIGLIE = {"Trend": ["core", "azb", "sbb", "psar", "adx", "ema"], "Momentum": ["mom"], "Indicatori": ["cd"]}
@@ -107,6 +108,7 @@ def seleziona(idx, sint, avvisi):
         if not d or cal(d, r["u"]) > FINESTRA_GG: continue
         fam = [n for n, ids in FAMIGLIE.items() if any(r["s"].get(i) and cal(r["s"][i], r["u"]) <= FINESTRA_GG for i in ids)]
         if len(fam) < CONFLUENZA_MIN: sc["confluenza_bassa"] += 1; continue
+        if (m[3] or 0) < MIN_SEGNALI_STORICI: sc["storia_breve"] += 1; continue   # conta solo chi avrebbe superato tutti gli altri criteri
         cand.append(dict(t=r["t"], nome=r["n"], isin=r["i"], emittente=r["e"], tipo=r.get("tp"), borsa=r["b"], prezzo=r["p"], var=r["v"], ultima_barra=r["u"],
                          sistema=sid, sistema_nome=nomi.get(sid, {}).get("nome", sid), colore=nomi.get(sid, {}).get("colore", "#666"), data_segnale=d,
                          famiglie=fam, confluenza=len(fam), stato=sta[0], eccesso=m[2], n_segnali=m[3], positivi=m[4],
@@ -121,6 +123,29 @@ def seleziona(idx, sint, avvisi):
     if normali and sc["dati_vecchi"] / normali > 0.30:
         avvisi.append("Più del 30% degli ETF ha l'ultima barra vecchia (oltre %d giorni lavorativi): possibile problema di download in big." % MAX_VECCHIAIA_GG_LAV)
     return cand, uscite, riep
+
+
+def dal_segnale(cand):
+    """Informazione, non criterio: variazione % dall'apertura della barra successiva al segnale (primo prezzo eseguibile) all'ultima chiusura
+    del grafico di big. Stessa serie di prezzi per entrambi i punti. None se non calcolabile. Ritorna quanti grafici non erano scaricabili."""
+    cache, falliti = {}, 0
+    for c in cand:
+        c["dal_segnale"] = None; c["dal_segnale_al"] = None
+        t = c["t"]
+        if t not in cache:
+            try: cache[t] = scarica(BIG + "charts/" + t.replace(".", "_") + ".json")["d"]
+            except Exception: cache[t] = None; falliti += 1
+        d = cache[t]
+        if not d: continue
+        try:
+            i = [x[0] for x in d].index(c["data_segnale"])
+            if i + 1 >= len(d): continue                      # segnale sull'ultima barra: l'ingresso non c'e' ancora
+            p0, p1 = d[i + 1][1], d[-1][4]
+            if p0 and p0 > 0 and p1 and p1 > 0:
+                c["dal_segnale"] = round((p1 / p0 - 1) * 100, 2); c["dal_segnale_al"] = d[-1][0]
+        except (ValueError, IndexError, TypeError):
+            pass
+    return falliti
 
 
 # ---------------- Storico ed esiti reali ----------------
@@ -201,11 +226,12 @@ def testo_regole():
             "index.json (segnali, stato, prezzi) e classifica_sintesi.json (miglior sistema per ETF) di big, più i grafici giornalieri di big per misurare gli esiti. Se i dati mancano o cambiano formato, la pagina mostra l'ultimo calcolo valido con un avviso e non presenta numeri come attuali."]),
         ("Criteri dei candidati (tutti obbligatori)", [
             "1. Solo ETF normali: esclusi leva e inversi (riconosciuti da big, la distinzione sugli inversi si basa sul nome e può sbagliare).",
-            "2. Il miglior sistema dell'ETF nella classifica di big a +%s barre deve avere esito 'affidabile'. Il sistema non può appartenere alla famiglia Inversione (compra in controtendenza)." % ORIZZONTE_CLASSIFICA,
+            "2. Il miglior sistema dell'ETF nella classifica di big a +%s barre deve avere esito 'affidabile'. Il sistema non può appartenere alla famiglia Inversione (compra in controtendenza). Deve inoltre aver dato almeno %d segnali storici su quell'ETF: con meno, il giudizio 'affidabile' poggia su troppo pochi casi." % (ORIZZONTE_CLASSIFICA, MIN_SEGNALI_STORICI),
             "3. Quel sistema deve aver dato un segnale negli ultimi %d giorni di calendario rispetto all'ultima barra dell'ETF." % FINESTRA_GG,
             "4. Confluenza: almeno %d famiglie coerenti con un segnale nella stessa finestra. Famiglie contate: %s. Inversione non è contata." % (CONFLUENZA_MIN, fam),
             "5. Dati freschi: l'ultima barra dell'ETF non più vecchia di %d giorni lavorativi." % MAX_VECCHIAIA_GG_LAV,
-            "Ordine della lista: confluenza, poi segnale più recente, poi ticker. Non si ordina per eccesso storico: premierebbe il caso. La lista può essere vuota: è un risultato valido."]),
+            "Ordine della lista: confluenza, poi segnale più recente, poi ticker. Non si ordina per eccesso storico: premierebbe il caso. La lista può essere vuota: è un risultato valido.",
+            "La colonna '% dal segnale' è solo informativa e non esclude nessun candidato: mostra di quanto è variato il prezzo dall'apertura della barra successiva al segnale (primo prezzo eseguibile) all'ultima chiusura disponibile. Un valore alto indica un ingresso già in ritardo. Non è calcolata (n.d.) se il segnale è sull'ultima barra o il grafico di big non è disponibile."]),
         ("Uscite recenti", [
             "ETF normali in stato ESCI secondo big: una posizione della famiglia Trend si è chiusa negli ultimi 5 giorni di calendario. Big non ha segnali short: ESCI significa solo che un sistema ha chiuso la sua posizione long, non è un invito a vendere."]),
         ("Storico ed esiti reali", [
@@ -214,6 +240,7 @@ def testo_regole():
         ("Limiti noti", [
             "Il giudizio 'affidabile' di big si basa sulla stessa storia usata per scegliere il sistema, tra 11 sistemi per ETF: con migliaia di ETF alcuni risultano affidabili per solo caso. Per questo la pagina riporta quanti ne risultano e quanti se ne attenderebbero per caso (circa %.0f%% dei misurabili a +20 barre, stima grezza dalla calibrazione di big su 150 serie casuali)." % CASO_AFFIDABILI_PCT,
             "L'universo contiene solo ETF oggi quotati: i chiusi mancano e i risultati tendono a essere ottimistici. Nessun filtro di liquidità: un segnale su un ETF poco scambiato può non essere eseguibile. I volumi di Yahoo sugli ETF europei sono poco affidabili.",
+            "Le segnalazioni registrate prima dell'introduzione del minimo di segnali storici restano nelle statistiche anche se non lo rispettano.",
             "Le posizioni di big usano finestre di dati diverse tra run giornaliero (2 anni) e classifica (5 anni). I rendimenti passati non sono una previsione."]),
         ("Aggiornamento", [
             "Lunedì-venerdì alle 20:30 UTC (dopo il run di big delle 17:30) e il sabato alle 11:00 UTC (dopo la classifica di big). Ogni file porta la data di generazione e la data dei dati di big."]),
@@ -265,6 +292,8 @@ def main():
         avvisi.append("La classifica dei sistemi di big non è recente (calcolata il %s): il giudizio 'affidabile' può essere superato." % sint.get("gen", "n.d."))
     cand, uscite, riep = seleziona(idx, sint, avvisi)
     if stato == "dati_vecchi": cand = []; riep["candidati"] = 0
+    falliti = dal_segnale(cand)
+    if falliti: avvisi.append("Variazione dal segnale non calcolata per alcuni candidati: grafico di big non scaricabile (%d)." % falliti)
     storico = carica(DATA / "storico.json") or {}
     storico.setdefault("segnalazioni", []); storico.setdefault("chiuse", []); storico["versione"] = 1
     nuove = registra(storico, cand)
@@ -272,7 +301,7 @@ def main():
     stat = statistiche(storico); storico["aggiornato"] = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     scrivi_json(DATA / "storico.json", storico, compatto=False)
     riep["nuove_segnalazioni"] = nuove; riep["segnalazioni_aperte"] = len(storico["segnalazioni"]); riep["segnalazioni_chiuse"] = len(storico["chiuse"])
-    criteri = dict(orizzonte_classifica=int(ORIZZONTE_CLASSIFICA), finestra_gg=FINESTRA_GG, confluenza_min=CONFLUENZA_MIN, max_vecchiaia_gg_lav=MAX_VECCHIAIA_GG_LAV, famiglie=FAMIGLIE, esclusa=FAM_ESCLUSA)
+    criteri = dict(orizzonte_classifica=int(ORIZZONTE_CLASSIFICA), finestra_gg=FINESTRA_GG, confluenza_min=CONFLUENZA_MIN, min_segnali_storici=MIN_SEGNALI_STORICI, max_vecchiaia_gg_lav=MAX_VECCHIAIA_GG_LAV, famiglie=FAMIGLIE, esclusa=FAM_ESCLUSA)
     scrivi_json(DATA / "selezione.json", dict(versione=1, stato=stato, generato=dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d %H:%M UTC"), big_gen=idx["gen"], classifica_gen=sint.get("gen"),
                                               avvisi=avvisi, criteri=criteri, riepilogo=riep, candidati=cand, uscite=uscite, statistiche=stat))
     genera_pdf(DATA / "regole_arrotation.pdf")

@@ -50,7 +50,14 @@
     "data": "2026-11-05",
     "prezzo": 64.88
    },
-   "esiti": {}
+   "esiti": {
+    "5": {
+     "data": "2026-11-11",
+     "ret": -0.03,
+     "base": 0.31,
+     "eccesso": -0.34
+    }
+   }
   },
   {
    "k": "EXXV.DE|adx|2026-11-02",
@@ -108,10 +115,66 @@
     "data": "2026-11-05",
     "prezzo": 15.748
    },
+   "esiti": {
+    "5": {
+     "data": "2026-11-11",
+     "ret": 0.53,
+     "base": 0.0,
+     "eccesso": 0.53
+    }
+   }
+  },
+  {
+   "k": "LGGL.MI|mom|2026-11-12",
+   "t": "LGGL.MI",
+   "nome": "L&G GLOBAL EQUITY UCITS ETF",
+   "sistema": "mom",
+   "sistema_nome": "Momentum",
+   "data_segnale": "2026-11-12",
+   "registrata": "2026-11-13",
+   "famiglie": [
+    "Trend",
+    "Momentum",
+    "Indicatori"
+   ],
+   "confluenza": 3,
+   "classifica": {
+    "orizzonte": "20",
+    "eccesso": 0.1,
+    "n": 22,
+    "positivi": 82
+   },
+   "ingresso": null,
+   "esiti": {}
+  },
+  {
+   "k": "IS31.DE|adx|2026-11-09",
+   "t": "IS31.DE",
+   "nome": "ISHSVI-E.S+P500MIN.V.EOHA",
+   "sistema": "adx",
+   "sistema_nome": "ADX",
+   "data_segnale": "2026-11-09",
+   "registrata": "2026-11-13",
+   "famiglie": [
+    "Trend",
+    "Momentum",
+    "Indicatori"
+   ],
+   "confluenza": 3,
+   "classifica": {
+    "orizzonte": "20",
+    "eccesso": 0.9,
+    "n": 17,
+    "positivi": 88
+   },
+   "ingresso": {
+    "data": "2026-11-10",
+    "prezzo": 11.39
+   },
    "esiti": {}
   }
  ],
  "chiuse": [],
  "versione": 1,
- "aggiornato": "2026-11-12 01:57 UTC"
+ "aggiornato": "2026-11-13 01:17 UTC"
 }

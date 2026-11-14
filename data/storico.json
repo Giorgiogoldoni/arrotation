@@ -144,7 +144,10 @@
     "n": 22,
     "positivi": 82
    },
-   "ingresso": null,
+   "ingresso": {
+    "data": "2026-11-13",
+    "prezzo": 24.84
+   },
    "esiti": {}
   },
   {
@@ -176,5 +179,5 @@
  ],
  "chiuse": [],
  "versione": 1,
- "aggiornato": "2026-11-13 01:17 UTC"
+ "aggiornato": "2026-11-14 00:56 UTC"
 }

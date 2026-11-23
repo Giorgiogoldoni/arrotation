@@ -26,6 +26,9 @@ jobs:
         run: pip install numpy reportlab
       - name: Esegui agente
         run: python scripts/agente.py
+      - name: Calcola radar di rotazione da BIG
+        if: always()
+        run: python scripts/rotation.py
       - name: Salva i dati (anche se l'agente ha segnalato un errore)
         if: always()
         run: |

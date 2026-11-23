@@ -1,21 +1,34 @@
-# arrotation
+# ARRotation
 
-Screening automatico dei candidati ETF da verificare, a partire dai dati pubblici del repo `big`. Nessuna AI, nessuna chiave, nessun costo. Non è una raccomandazione.
+Dashboard per rispondere a due domande:
+1. **Dove si sta concentrando il capitale?** Osservazione delle rotazioni già in corso.
+2. **Dove potrebbe spostarsi dopo?** Individuazione delle aree che stanno accelerando prima che la rotazione sia pienamente confermata.
 
-## Struttura da caricare
-- `index.html` nella radice
-- `scripts/agente.py`
-- `.github/workflows/agente.yml` (la cartella inizia con un punto: su GitHub usa "Add file → Create new file" e digita `.github/workflows/agente.yml`, poi incolla il contenuto)
-- `data/` viene creata dall'agente al primo avvio
+## Motori
 
-## Impostazioni una tantum
-1. Settings → Actions → General → Workflow permissions → **Read and write permissions**
-2. Settings → Pages → Source: **Deploy from a branch**, branch `main`, cartella `/ (root)`
-3. Actions → "Aggiorna arrotation" → Run workflow (primo avvio manuale)
+- **Screening BIG** (`scripts/agente.py`): candidati, uscite e verifica storica dei segnali. Non modifica il repository BIG.
+- **Rotation Radar** (`scripts/rotation.py`): aggrega i rendimenti degli ETF per aree geografiche, settori e asset class; calcola forza relativa contro la mediana degli ETF azionari, ampiezza e accelerazione su 5, 20 e 60 sedute.
+- **Dashboard** (`index.html`): presenta separatamente lo screening, la rotazione osservata e il radar delle possibili rotazioni successive.
 
-## Come funziona
-Ogni giorno lavorativo alle 20:30 UTC legge `index.json` e `classifica_sintesi.json` di big, applica i criteri (vedi `data/regole_arrotation.pdf`, sempre generato dai parametri in `scripts/agente.py`), registra le nuove segnalazioni in `data/storico.json` e misura gli esiti reali a 5, 10, 20 e 60 barre.
-Se i dati di big mancano o cambiano formato il workflow fallisce (GitHub ti avvisa per email), la pagina mostra l'ultimo calcolo valido con un avviso rosso.
+## Distinzione importante: flussi e prezzi
 
-## Parametri
-Tutti in cima a `scripts/agente.py`: orizzonte della classifica, finestra dei segnali, confluenza minima, minimo di segnali storici del sistema di riferimento (`MIN_SEGNALI_STORICI`, ora 15), famiglie, soglie di vecchiaia dei dati.
+BIG pubblica prezzi OHLC e segnali, non sottoscrizioni/rimborsi, variazioni delle quote in circolazione o flussi netti. Il Rotation Radar è quindi un **proxy di rotazione basato sui prezzi**, non una misura di flussi monetari effettivi. La pagina lo dichiara esplicitamente e non trasforma la forza relativa in un falso dato di flusso.
+
+Per integrare i flussi effettivi serve una fonte separata con copertura, date e licenza verificabili. Una fonte pubblica da valutare è [ETFIQ Open Data](https://etfiq.com/data/): pubblica aggregati di flussi per categoria ed emittente, con attribuzione richiesta; la copertura dei flussi non coincide con l'intero universo UCITS europeo. Metodologia: [ETFIQ Fund Flows](https://etfiq.com/methodology/flows).
+
+## Aggiornamento
+
+Il workflow **Aggiorna arrotation** legge i dati di BIG, esegue lo screening storico, calcola il Rotation Radar scaricando gli storici degli ETF classificati e salva i file JSON in `data/` per GitHub Pages.
+
+Schedulazione: lunedì-venerdì alle 20:30 UTC e sabato alle 11:00 UTC. È disponibile anche l'avvio manuale da Actions.
+
+## File principali
+
+- `data/selezione.json`: candidati e uscite dello screening.
+- `data/storico.json`: esiti delle segnalazioni.
+- `data/rotation.json`: dati aggregati del Rotation Radar.
+- `data/regole_arrotation.pdf`: regole dello screening BIG.
+
+## Limiti
+
+Le categorie geografiche e settoriali del radar sono assegnate con parole chiave dei nomi degli ETF e sono quindi una tassonomia operativa da controllare. I rendimenti sono mediane di ETF disponibili nell'universo BIG, non flussi di capitale. Le serie mancanti o insufficienti sono escluse; la copertura viene mostrata. Nessuna raccomandazione automatica.

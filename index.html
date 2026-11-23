@@ -55,4 +55,90 @@ $("xls").onclick=()=>{if(!S)return;const wb=XLSX.utils.book_new(),add=(n,a)=>XLS
  add("In corso",((H&&H.segnalazioni)||[]).map(e=>{const o={Ticker:e.t,Nome:e.nome,Sistema:e.sistema_nome,"Segnale del":e.data_segnale,"Ingresso data":e.ingresso?e.ingresso.data:"","Ingresso prezzo":e.ingresso?e.ingresso.prezzo:""};[5,10,20,60].forEach(n=>{const x=e.esiti&&e.esiti[n];o["+"+n+" rend %"]=x?x.ret:"";o["+"+n+" eccesso %"]=x&&x.eccesso!=null?x.eccesso:""});return o}));
  add("Concluse",((H&&H.chiuse)||[]).map(c=>({Ticker:c.t,Sistema:c.sistema,"Segnale del":c.data_segnale,"+5 %":c.ret["5"],"+10 %":c.ret["10"],"+20 %":c.ret["20"],"+60 %":c.ret["60"]})));
  add("Avvisi",(S.avvisi||[]).map(a=>({Avviso:a})));XLSX.writeFile(wb,"arrotation.xlsx")};
-</script></body></html>
+</script>
+<style>
+#chartModal{display:none;position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:99;padding:14px;overflow:auto}
+#chartPanel{background:#fff;max-width:1100px;margin:2vh auto;border-radius:12px;padding:16px;box-shadow:0 12px 40px #0003}
+#chartHead{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}
+#chartMeta{color:#64748b;font-size:12px;margin:4px 0 10px}
+#chartSvg{width:100%;height:auto;display:block;background:#fff;border:1px solid #e5e7eb;border-radius:8px;touch-action:pan-y}
+.chartLegend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:#475569;margin:8px 0}
+.chartLegend span:before{content:"";display:inline-block;width:13px;height:3px;background:currentColor;vertical-align:middle;margin-right:5px}
+#chartClose{font-size:20px;min-width:42px}
+@media(max-width:600px){#chartPanel{padding:10px;margin:0 auto}#chartModal{padding:6px}#chartSvg{min-height:220px}}
+</style>
+<div id="chartModal" role="dialog" aria-modal="true" aria-label="Grafico ETF">
+ <div id="chartPanel">
+  <div id="chartHead"><div><h2 id="chartTitle">Grafico ETF</h2><div id="chartMeta">Caricamento storico…</div></div><button id="chartClose" aria-label="Chiudi">×</button></div>
+  <div class="chartLegend"><span style="color:#16a34a">Candela rialzista</span><span style="color:#dc2626">Candela ribassista</span><span style="color:#2563eb">Donchian 20</span><span style="color:#d97706">KAMA</span><span style="color:#9333ea">Parabolic SAR</span></div>
+  <div id="chartStatus" class="sub"></div>
+  <svg id="chartSvg" viewBox="0 0 1000 520" role="img" aria-label="Grafico a candele con indicatori"></svg>
+ </div>
+</div>
+<script>
+(()=>{
+ const modal=document.getElementById('chartModal'), close=document.getElementById('chartClose');
+ const ns='http://www.w3.org/2000/svg';
+ const el=(tag,attrs={},parent)=>{const n=document.createElementNS(ns,tag);Object.entries(attrs).forEach(([k,v])=>n.setAttribute(k,v));(parent||document.getElementById('chartSvg')).appendChild(n);return n};
+ const fmt=x=>Number(x).toLocaleString('it-IT',{maximumFractionDigits:4});
+ function kama(values,period=10,fast=2,slow=30){
+  const out=Array(values.length).fill(null),fsc=2/(fast+1),ssc=2/(slow+1);let prev=null;
+  for(let i=0;i<values.length;i++){if(i<period){out[i]=null;continue}
+   const change=Math.abs(values[i]-values[i-period]);let vol=0;
+   for(let j=i-period+1;j<=i;j++)vol+=Math.abs(values[j]-values[j-1]);
+   const er=vol?change/vol:0,sc=Math.pow(er*(fsc-ssc)+ssc,2);
+   prev=prev==null?values[i-period]:prev+sc*(values[i]-prev);out[i]=prev;
+  }return out;
+ }
+ function psar(rows,step=.02,max=.2){
+  const out=Array(rows.length).fill(null);if(rows.length<2)return out;
+  let bull=rows[1][4]>=rows[0][4],af=step,ep=bull?Math.max(rows[0][2],rows[1][2]):Math.min(rows[0][3],rows[1][3]),sar=bull?Math.min(rows[0][3],rows[1][3]):Math.max(rows[0][2],rows[1][2]);
+  for(let i=1;i<rows.length;i++){sar=sar+af*(ep-sar);
+   if(bull){sar=Math.min(sar,rows[i-1][3],i>1?rows[i-2][3]:rows[i-1][3]);if(rows[i][3]<sar){bull=false;sar=ep;ep=rows[i][3];af=step}else if(rows[i][2]>ep){ep=rows[i][2];af=Math.min(max,af+step)}}
+   else{sar=Math.max(sar,rows[i-1][2],i>1?rows[i-2][2]:rows[i-1][2]);if(rows[i][2]>sar){bull=true;sar=ep;ep=rows[i][2];af=step}else if(rows[i][3]<ep){ep=rows[i][3];af=Math.min(max,af+step)}}
+   out[i]=sar;
+  }return out;
+ }
+ function pathLine(points,color,width=2,dash=''){
+  let d='';points.forEach(p=>{if(!p)return;d+=(d?' L':'M')+p[0].toFixed(1)+','+p[1].toFixed(1)});
+  if(d)el('path',{d,fill:'none',stroke:color,'stroke-width':width,'stroke-dasharray':dash});
+ }
+ async function show(ticker,name){
+  modal.style.display='block';document.body.style.overflow='hidden';
+  document.getElementById('chartTitle').textContent=ticker+' — '+(name||'');
+  document.getElementById('chartMeta').textContent='Storico giornaliero · candele OHLC · Donchian 20 · KAMA 10 · Parabolic SAR 0,02/0,20';
+  document.getElementById('chartStatus').textContent='Caricamento dati…';
+  document.getElementById('chartSvg').innerHTML='';
+  try{
+   const url='https://giorgiogoldoni.github.io/big/data/charts/'+ticker.replace(/\./g,'_')+'.json';
+   const res=await fetch(url,{cache:'no-cache'});if(!res.ok)throw Error('Storico non disponibile ('+res.status+')');
+   const json=await res.json();let rows=(json.d||[]).filter(x=>Array.isArray(x)&&x.length>=5&&x.slice(1,5).every(v=>Number.isFinite(Number(v)))).slice(-120);
+   if(rows.length<3)throw Error('Storico insufficiente per disegnare il grafico.');
+   const highs=rows.map(x=>+x[2]),lows=rows.map(x=>+x[3]),closes=rows.map(x=>+x[4]),ks=kama(closes),ss=psar(rows);
+   const upper=rows.map((_,i)=>i<19?null:Math.max(...highs.slice(i-19,i+1))),lower=rows.map((_,i)=>i<19?null:Math.min(...lows.slice(i-19,i+1)));
+   const lo=Math.min(...lows,...ss.filter(Number.isFinite)),hi=Math.max(...highs,...ss.filter(Number.isFinite)),pad=(hi-lo)*.08||1;
+   const min=lo-pad,max=hi+pad,left=65,right=980,top=25,bottom=450,w=right-left,h=bottom-top;
+   const X=i=>left+(i+.5)*w/rows.length,Y=v=>bottom-(v-min)/(max-min)*h;
+   for(let j=0;j<=5;j++){const val=min+(max-min)*j/5,y=Y(val);el('line',{x1:left,y1:y,x2:right,y2:y,stroke:'#e5e7eb'});const tx=el('text',{x:8,y:y+4,fill:'#64748b','font-size':12});tx.textContent=fmt(val)}
+   rows.forEach((r,i)=>{const x=X(i),up=+r[4]>=+r[1],color=up?'#16a34a':'#dc2626',bw=Math.max(2,Math.min(7,w/rows.length*.62));
+    el('line',{x1:x,y1:Y(+r[2]),x2:x,y2:Y(+r[3]),stroke:color,'stroke-width':1.3});
+    const y=Math.min(Y(+r[1]),Y(+r[4])),height=Math.max(1.5,Math.abs(Y(+r[1])-Y(+r[4])));
+    el('rect',{x:x-bw/2,y,width:bw,height,fill:color,stroke:color});
+   });
+   pathLine(upper.map((v,i)=>v==null?null:[X(i),Y(v)]),'#2563eb',1.5);
+   pathLine(lower.map((v,i)=>v==null?null:[X(i),Y(v)]),'#2563eb',1.5);
+   pathLine(ks.map((v,i)=>v==null?null:[X(i),Y(v)]),'#d97706',2);
+   ss.forEach((v,i)=>{if(v!=null)el('circle',{cx:X(i),cy:Y(v),r:2.5,fill:'#9333ea'})});
+   [0,Math.floor(rows.length/2),rows.length-1].forEach(i=>{const tx=el('text',{x:X(i),y:480,fill:'#64748b','font-size':12,'text-anchor':'middle'});tx.textContent=rows[i][0]});
+   const last=rows[rows.length-1],prev=rows[rows.length-2],change=(+last[4]/+prev[4]-1)*100;
+   document.getElementById('chartStatus').textContent=rows.length+' barre · Ultima chiusura '+fmt(last[4])+' · variazione ultima barra '+(change>=0?'+':'')+change.toFixed(2)+'% · dati aggiornati al '+last[0];
+  }catch(e){document.getElementById('chartStatus').textContent=e.message+' — puoi comunque aprire il grafico originale in BIG.';const a=document.createElement('a');a.href='https://giorgiogoldoni.github.io/big/grafico.html?t='+encodeURIComponent(ticker);a.target='_blank';a.rel='noopener';a.textContent='Apri grafico BIG';document.getElementById('chartStatus').append(' ',a)}
+ }
+ document.addEventListener('click',e=>{const a=e.target.closest('a');if(!a||!a.href.includes('grafico.html?t='))return;const u=new URL(a.href);if(u.hostname!=='giorgiogoldoni.github.io'||!u.pathname.includes('/big/grafico.html'))return;e.preventDefault();const ticker=u.searchParams.get('t');const row=a.closest('tr');show(ticker,row&&row.cells[1]?row.cells[1].textContent:'')});
+ close.addEventListener('click',()=>{modal.style.display='none';document.body.style.overflow=''});
+ modal.addEventListener('click',e=>{if(e.target===modal){modal.style.display='none';document.body.style.overflow=''}});
+ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&modal.style.display==='block'){modal.style.display='none';document.body.style.overflow=''}});
+})();
+</script>
+
+</body></html>

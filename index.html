@@ -12,9 +12,40 @@ td.n{text-align:right}.neg{color:#c0392b}.pos{color:#1e8449}a{color:#1d4ed8;text
 .box{margin:8px 18px;border-radius:8px;font-size:13px}.err{background:#fde8e8;color:#8a1c14;border:1px solid #f3b8b3}.warn{background:#fff3e0;color:#7a4a05;border:1px solid #f1d19a}.info{background:#f4f6f8;color:#333;border:1px solid #dfe3e8}
 .box ul{margin:4px 0 0;padding-left:18px}.kpi{display:flex;flex-wrap:wrap;gap:18px;padding:4px 18px 8px}.kpi div{min-width:120px}.kpi b{display:block;font-size:20px}.kpi span{font-size:12px;color:#666}
 .vuoto{padding:10px 8px;color:#666}.note{font-size:12px;color:#555;padding:4px 18px 16px;max-width:1100px}
+
+#rotation{margin:10px 18px;padding:14px;border:1px solid #dfe3e8;border-radius:10px;background:#fff}
+#rotation h2{margin:0 0 6px;font-size:18px}
+#rotation .rsub{color:#64748b;font-size:12px;margin:3px 0 10px}
+#rotation .rkpis{display:flex;flex-wrap:wrap;gap:10px;margin:10px 0}
+#rotation .rkpi{border:1px solid #eceef1;border-radius:8px;padding:9px 12px;min-width:135px}
+#rotation .rkpi b{display:block;font-size:20px}
+#rotation .rkpi span{font-size:11px;color:#64748b}
+#rotation .rnote{background:#fff7ed;border:1px solid #fed7aa;border-radius:7px;padding:9px 10px;font-size:12px;color:#7c2d12;margin:8px 0}
+#rotation .rgrid{display:grid;grid-template-columns:1fr;gap:12px}
+#rotation .rtable{overflow-x:auto}
+#rotation table{min-width:760px;font-size:12px}
+#rotation th{position:static}
+#rotation .rstatus{font-size:11px;padding:2px 6px;border-radius:5px;background:#f1f5f9;color:#475569}
+#rotation .rstatus.strong{background:#dcfce7;color:#166534}
+#rotation .rstatus.up{background:#dbeafe;color:#1d4ed8}
+#rotation .rstatus.weak{background:#fee2e2;color:#991b1b}
+#rotation .rpos{color:#15803d}#rotation .rneg{color:#b91c1c}
+@media(min-width:900px){#rotation .rgrid{grid-template-columns:1fr 1fr}}
 </style></head><body>
 <header><h1>arrotation – candidati da verificare</h1><div class="sub" id="sub">Caricamento…</div></header>
 <div class="box info"><b>Screening automatico, non una raccomandazione.</b> Legge i dati pubblici di <a href="https://giorgiogoldoni.github.io/big/">big</a> e applica criteri fissi (vedi Regole PDF). Non è consulenza, non considera obiettivi, costi, tasse o liquidità di nessun investitore: ogni nominativo va verificato prima di qualunque decisione.</div>
+
+<section id="rotation">
+ <h2>ARRotation — Money Flow & Rotation Radar</h2>
+ <div class="rsub" id="rotationMeta">Caricamento radar…</div>
+ <div class="rkpis" id="rotationKpis"></div>
+ <div class="rnote"><b>Attenzione: flussi monetari effettivi non ancora disponibili.</b> BIG fornisce prezzi OHLC e segnali, non sottoscrizioni/rimborsi, flussi netti o patrimonio gestito. Questa prima versione misura la rotazione implicita nei prezzi: non dichiara che il denaro sia entrato o uscito davvero.</div>
+ <div class="rgrid">
+  <div><h2>1. Dove si concentra la forza adesso?</h2><div class="rsub">Classifica delle aree, dei settori e delle asset class. La forza relativa è confrontata con la mediana degli ETF azionari dell'universo BIG.</div><div class="rtable" id="rotationNow"></div></div>
+  <div><h2>2. Dove potrebbe spostarsi dopo?</h2><div class="rsub">Radar anticipatore basato su accelerazione, ampiezza e conferma a 60 sedute. È un indicatore di probabilità relativa, non una previsione certa.</div><div class="rtable" id="rotationNext"></div></div>
+ </div>
+ <div class="rsub" id="rotationMethod"></div>
+</section>
 <div id="avvisi"></div>
 <div class="bar"><input id="q" placeholder="Cerca ticker, nome, ISIN" size="24"><button id="xls">Scarica Excel</button><a href="data/regole_arrotation.pdf" target="_blank"><button>Regole PDF</button></a><a href="https://giorgiogoldoni.github.io/big/"><button>Apri big</button></a><span id="cnt" class="sub"></span></div>
 <div class="kpi" id="kpi"></div>
@@ -141,4 +172,34 @@ $("xls").onclick=()=>{if(!S)return;const wb=XLSX.utils.book_new(),add=(n,a)=>XLS
 })();
 </script>
 
+
+<script>
+(async function(){
+ const $r=id=>document.getElementById(id),pct=v=>v==null?'–':(v>0?'+':'')+Number(v).toFixed(1)+'%',num=v=>v==null?'–':Number(v).toFixed(1)+'%';
+ const safe=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+ function table(rows){
+  if(!rows.length)return '<div class="vuoto">Dati non sufficienti per questa categoria.</div>';
+  return '<table><thead><tr><th>Categoria</th><th>ETF</th><th>5 sed.</th><th>20 sed.</th><th>60 sed.</th><th>Rel. 20</th><th>Ampiezza</th><th>Accel.</th><th>Fase</th></tr></thead><tbody>'+
+   rows.map(x=>'<tr><td><b>'+safe(x.category)+'</b><div class="sub">'+safe(x.group)+'</div></td><td class="n">'+x.n+'</td><td class="n">'+pct(x.ret5)+'</td><td class="n">'+pct(x.ret20)+'</td><td class="n">'+pct(x.ret60)+'</td><td class="n '+(x.rel20>=0?'rpos':'rneg')+'">'+pct(x.rel20)+'</td><td class="n">'+num(x.breadth20)+'</td><td class="n '+(x.acceleration>=0?'rpos':'rneg')+'">'+pct(x.acceleration)+'</td><td><span class="rstatus '+(x.status==='Forza diffusa'?'strong':x.status==='In miglioramento'?'up':x.status==='Perdita di forza'?'weak':'')+'">'+safe(x.status)+'</span></td></tr>').join('')+'</tbody></table>';
+ }
+ try{
+  const res=await fetch('data/rotation.json?'+Date.now(),{cache:'no-store'});if(!res.ok)throw Error('File rotation.json non ancora generato');
+  const d=await res.json(),cats=d.categories||[];
+  $r('rotationMeta').textContent='BIG: '+(d.big_generated||'n.d.')+' · ultima barra: '+(d.latest_bar||'n.d.')+' · radar generato: '+(d.generated||'n.d.')+(d.stale?' · DATI NON AGGIORNATI':'');
+  const best=cats[0],worst=[...cats].sort((a,b)=>(a.score||0)-(b.score||0))[0];
+  $r('rotationKpis').innerHTML=[
+   [d.universe,'ETF nell’universo BIG'],[d.tickers_loaded+' / '+d.tickers_requested,'storici caricati'],[best?best.category:'–','prima categoria per score'],[worst?worst.category:'–','ultima categoria per score']
+  ].map(k=>'<div class="rkpi"><b>'+safe(k[0])+'</b><span>'+safe(k[1])+'</span></div>').join('');
+  const ranked=[...cats].sort((a,b)=>(b.score||0)-(a.score||0));
+  $r('rotationNow').innerHTML=table(ranked.slice(0,12));
+  $r('rotationNext').innerHTML=table([...cats].sort((a,b)=>(b.acceleration||-999)-(a.acceleration||-999)).slice(0,12));
+  $r('rotationMethod').textContent=(d.flow_note||'')+' Metodo: '+(d.method||'')+' · Copertura: '+(d.tickers_loaded||0)+' storici su '+(d.tickers_requested||0)+' ETF selezionati.';
+  if(d.stale)$r('rotationMeta').style.color='#b91c1c';
+ }catch(e){
+  $r('rotationMeta').textContent=e.message+' — il radar comparirà dopo il primo aggiornamento del workflow.';
+  $r('rotationNow').innerHTML='<div class="vuoto">In attesa del primo calcolo.</div>';
+  $r('rotationNext').innerHTML='<div class="vuoto">In attesa del primo calcolo.</div>';
+ }
+})();
+</script>
 </body></html>

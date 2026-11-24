@@ -251,7 +251,7 @@ $("xls").onclick=()=>{if(!S)return;const wb=XLSX.utils.book_new(),add=(n,a)=>XLS
  try{
   const res=await fetch('data/flows.json?'+Date.now(),{cache:'no-store'});if(!res.ok)throw Error('Dati flussi non ancora generati dal workflow');
   const d=await res.json(),t=d.total||{},c=d.coverage||{};
-  $('flowMeta').textContent='Fonte ETFIQ · dati al '+(d.asOf||'n.d.')+' · aggiornamento ARRotation '+(d.generated||'n.d.');
+  $('flowMeta').textContent='Fonte ETFIQ · dati al '+(d.asOf||'n.d.')+' · aggiornamento ARRotation '+(d.generated||'n.d.')+(d.stale?' · ATTENZIONE: ultimo dato conservato, fonte non aggiornata':'');
   $('flowKpis').innerHTML=[
    [money(t.flowUsd),'flusso netto giornaliero'],[(t.funds||0).toLocaleString('it-IT'),'ETF inclusi nei totali'],[money(t.startNetAssetsUsd),'patrimonio iniziale coperto'],[pct(t.flowPctOfStartNetAssets),'flusso / patrimonio']
   ].map(x=>'<div class="fkpi"><b>'+safe(x[0])+'</b><span>'+safe(x[1])+'</span></div>').join('');

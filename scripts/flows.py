@@ -10,6 +10,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / "data"
 URL = "https://etfiq.com/data/flows/daily/latest.json"
+AGG_URL = "https://etfiq.com/data/flows/aggregates.json"
 UA = "ARRotation/1.0 (ETFIQ attribution: https://etfiq.com/flows/)"
 
 def fetch():
@@ -36,6 +37,12 @@ def main():
         raise
     if raw.get("schemaVersion") != 1 or raw.get("basis") != "daily":
         raise RuntimeError("Schema ETFIQ inatteso: nessun dato aggiornato pubblicato")
+    try:
+        aggregates = get_json(AGG_URL)
+        top_windows = aggregates.get("top", {})
+    except Exception as exc:
+        print("ETFIQ multi-window aggregates unavailable:", exc)
+        top_windows = {}
     funds = clean_rows(raw.get("funds", []))
     # Non sommare i fondi trattenuti per revisione o senza flusso verificato.
     valid = [r for r in funds if not r.get("held") and r.get("status") == "ok" and isinstance(r.get("flowUsd"), (int, float))]
@@ -94,6 +101,7 @@ def main():
             "funds_valid_rows": len(valid)
         },
         "total": raw.get("total", {}),
+        "top_windows": top_windows,
         "categories": clean_rows(raw.get("categories", [])),
         "issuers": clean_rows(raw.get("issuers", [])),
         "themes": theme_rows,

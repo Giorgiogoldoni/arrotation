@@ -40,6 +40,20 @@ SECTORS = {
     "Utilities": ["utilities"],
     "Immobiliare": ["real estate", "property"],
 }
+THEMES = {
+    "Semiconduttori": ["semiconductor", "semiconductors", "chip"],
+    "Intelligenza artificiale": ["artificial intelligence", "machine learning"],
+    "Cybersecurity": ["cybersecurity", "cyber security"],
+    "Difesa": ["defence", "defense", "aerospace & defense", "aerospace and defense"],
+    "Energia pulita": ["clean energy", "renewable energy", "solar energy", "wind energy"],
+    "Robotica": ["robotics", "automation"],
+    "Biotech": ["biotech", "biotechnology"],
+    "Cloud": ["cloud computing", "cloud technology"],
+    "Infrastrutture": ["infrastructure", "infrastructures"],
+    "Acqua": ["water"],
+    "Spazio": ["space exploration", "space economy"],
+}
+
 ASSETS = {
     "Obbligazionario": ("bond", ["bond", "bonds", "treasury", "government", "corporate", "high yield", "aggregate", "gilts"]),
     "Materie prime": ("commodity", ["commodity", "commodities", "broad basket", "natural resources"]),
@@ -62,9 +76,13 @@ def classify(row):
     for label, words in REGIONS.items():
         if ac in ("equity", "stock", "stocks") and any(w in name for w in words):
             found.append(("Geografia", label))
-    for label, words in SECTORS.items():
-        if ac in ("equity", "stock", "stocks") and any(w in name for w in words):
-            found.append(("Settori", label))
+    if ac in ("equity", "stock", "stocks"):
+        for label, words in SECTORS.items():
+            if any(w in name for w in words):
+                found.append(("Settori", label))
+        for label, words in THEMES.items():
+            if any(w in name for w in words):
+                found.append(("Temi", label))
     for label, (asset, words) in ASSETS.items():
         if (asset is None and any(w in name for w in words)) or (asset is not None and (ac == asset or any(w in name for w in words))):
             found.append(("Asset class", label))
@@ -89,20 +107,20 @@ def load_chart(ticker):
 
 
 def market_of(row):
-    """Classifica per mercato di quotazione, non per area geografica sottostante."""
+    """Mercato di quotazione; UCITS Europa richiede anche ISIN con domicilio riconosciuto."""
     exchange = str(row.get("b") or "").strip().lower().replace(" ", "")
     ticker = str(row.get("t") or "").upper()
-    us_codes = ("nyse", "nasdaq", "arca", "bats", "cboe", "amex", "nysearca", "nasdaqgs", "nasdaqgm", "nasdaqcm")
+    isin = str(row.get("i") or "").upper()
+    us_codes = ("nyse", "nasdaq", "arca", "bats", "cboe", "amex", "nysearca")
     eu_codes = ("mil", "milan", "borsaitaliana", "xetra", "frankfurt", "gettex", "london", "lse", "euronext", "paris", "amsterdam", "brussels", "lisbon", "madrid", "swiss", "six", "zurich", "stockholm", "oslo", "copenhagen", "helsinki", "vienna", "dublin", "stuttgart", "tradegate", "borsa")
     if any(code in exchange for code in us_codes):
         return "USA"
-    if any(code in exchange for code in eu_codes):
-        return "UCITS Europa"
     suffix = ticker.rsplit(".", 1)[-1] if "." in ticker else ""
     eu_suffixes = {"MI", "DE", "AS", "PA", "L", "SW", "MC", "BR", "ST", "OL", "CO", "HE", "IR", "VI", "F", "SG", "BE", "DU", "HM", "HA", "ETR", "MU", "PR", "AT", "LS"}
-    if suffix in eu_suffixes:
+    is_eu_venue = any(code in exchange for code in eu_codes) or suffix in eu_suffixes
+    ucits_domiciles = {"IE", "LU", "DE", "FR", "NL", "BE", "ES", "IT", "SE", "DK", "FI", "AT", "PT", "PL", "CZ", "HU", "GR", "RO", "SK", "SI", "BG", "HR", "LT", "LV", "EE", "MT", "CY", "GB"}
+    if is_eu_venue and len(isin) == 12 and isin[:2] in ucits_domiciles:
         return "UCITS Europa"
-    # Simboli senza suffisso: li includiamo negli USA solo se BIG dichiara una sede USA.
     return None
 
 def main():

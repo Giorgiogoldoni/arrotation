@@ -52,7 +52,7 @@ td.n{text-align:right}.neg{color:#c0392b}.pos{color:#1e8449}a{color:#1d4ed8;text
 #dualradar{margin:10px 18px;padding:14px;border:1px solid #dfe3e8;border-radius:10px;background:#fff}
 #dualradar h2{font-size:18px;margin:0 0 6px}#dualradar h3{font-size:14px;margin:10px 0 5px}
 #dualradar .drmeta{font-size:12px;color:#64748b;margin:3px 0 10px}#dualradar .drgrid{display:grid;grid-template-columns:1fr;gap:12px}
-#dualradar .drtable{overflow-x:auto}#dualradar table{min-width:680px;font-size:12px}#dualradar th{position:static}
+#dualradar .drtable{overflow-x:auto}#dualradar table{min-width:680px;font-size:12px}#dualradar th{position:static}#dualradar .fpos{color:#15803d}#dualradar .fneg{color:#b91c1c}
 #dualradar .drnote{font-size:12px;background:#f4f6f8;border:1px solid #dfe3e8;padding:9px;border-radius:7px;margin:8px 0}
 @media(min-width:900px){#dualradar .drgrid{grid-template-columns:1fr 1fr}}
 </style></head><body>
@@ -116,7 +116,7 @@ async function loadDualRadar(){
   const table=a=>a.length?'<table><thead><tr><th>Settore / tema</th><th>ETF</th><th>Rend. 20g</th><th>Rel. 20g</th><th>Rel. 60g</th><th>Ampiezza</th><th>Stato</th></tr></thead><tbody>'+a.map(x=>'<tr><td><b>'+x.category+'</b></td><td class="n">'+x.n+'</td><td class="n '+cls(x.ret20)+'">'+fmt(x.ret20)+'</td><td class="n '+cls(x.rel20)+'">'+fmt(x.rel20)+'</td><td class="n '+cls(x.rel60)+'">'+fmt(x.rel60)+'</td><td class="n">'+(x.breadth20??'–')+'%</td><td>'+x.status+'</td></tr>').join('')+'</tbody></table>':'<div class="vuoto">Nessun gruppo con copertura sufficiente per questo mercato. Verificare il campo borsa nell’universo BIG.</div>';
   el('radarUSA').innerHTML=table(usa);el('radarEU').innerHTML=table(eu);el('radarUSAThemes').innerHTML=table(usaT);el('radarEUThemes').innerHTML=table(euT);
   const compare=(a,b,kind)=>{const am=Object.fromEntries(a.map(x=>[x.category,x])),bm=Object.fromEntries(b.map(x=>[x.category,x])),ks=Object.keys(am).filter(k=>bm[k]);return ks.map(k=>{const x=am[k],y=bm[k],same=Math.sign(x.rel20||0)===Math.sign(y.rel20||0);return '<tr><td>'+kind+'</td><td><b>'+k+'</b></td><td class="n '+cls(x.rel20)+'">'+fmt(x.rel20)+'</td><td class="n '+cls(y.rel20)+'">'+fmt(y.rel20)+'</td><td>'+(same?'Convergenti':'Divergenti')+'</td></tr>'}).join('')};const comp=compare(usa,eu,'Settore')+compare(usaT,euT,'Tema');el('radarCompare').innerHTML=comp?'<table><thead><tr><th>Tipo</th><th>Categoria</th><th>USA rel. 20g</th><th>Europa rel. 20g</th><th>Confronto</th></tr></thead><tbody>'+comp+'</tbody></table>':'<div class="vuoto">Nessun settore o tema comune con almeno tre ETF validi in entrambi i mercati.</div>';
-  const mc=d.market_coverage||{};el('dualMeta').textContent='Ultima barra: '+(d.latest_bar||'n.d.')+' · BIG universe: '+(d.universe||0)+' ETF · classificazione per borsa e suffisso ticker.';
+  const mc=d.market_coverage||{};el('dualMeta').textContent='Ultima barra: '+(d.latest_bar||'n.d.')+' · BIG universe: '+(d.universe||0)+' ETF · classificazione per borsa e ISIN UCITS.';
   el('dualFoot').textContent='Copertura classificata: USA '+(mc.USA?.tickers||0)+' ticker caricati; Europa UCITS '+(mc['UCITS Europa']?.tickers||0)+' ticker caricati. Benchmark relativo calcolato separatamente per ciascun mercato. La categoria tematica resta una classificazione operativa basata sul nome ETF; non equivale a flussi.';
  }catch(e){el('dualMeta').textContent=e.message+' — il radar separato apparirà dopo il prossimo run di Aggiorna arrotation.'}
 }

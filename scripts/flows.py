@@ -41,8 +41,6 @@ SECTOR_KEYWORDS = {
 def sector_rollup(rows):
     grouped = {}
     for row in rows:
-        if row.get("category") != "Stocks":
-            continue
         name = str(row.get("name") or "").lower()
         sector = next((label for label, terms in SECTOR_KEYWORDS.items() if any(term in name for term in terms)), None)
         if not sector:

@@ -24,6 +24,40 @@ def fetch():
 def clean_rows(rows):
     return [r for r in rows if isinstance(r, dict)]
 
+SECTOR_KEYWORDS = {
+    "Tecnologia": ["information technology", "technology sector", "technology", "software", "semiconductor", "semiconductors"],
+    "Salute": ["health care", "healthcare", "biotechnology", "biotech", "pharmaceutical", "pharma"],
+    "Finanziari": ["financials", "financial sector", "financial", "banking", "banks", "insurance"],
+    "Industria": ["industrials", "industrial sector", "industrial", "aerospace", "defense", "defence", "transportation"],
+    "Energia": ["energy sector", "energy", "oil & gas", "oil and gas", "renewable energy", "clean energy"],
+    "Consumi ciclici": ["consumer discretionary", "consumer cyclical", "retail", "e-commerce"],
+    "Consumi difensivi": ["consumer staples", "consumer defensive", "food and beverage", "staples"],
+    "Materiali": ["materials sector", "basic materials", "materials", "metals and mining", "mining"],
+    "Utilities": ["utilities sector", "utilities"],
+    "Immobiliare": ["real estate", "reit", "property"],
+    "Comunicazioni": ["communication services", "telecommunications", "telecom", "media"],
+}
+
+def sector_rollup(rows):
+    grouped = {}
+    for row in rows:
+        if row.get("category") != "Stocks":
+            continue
+        name = str(row.get("name") or "").lower()
+        sector = next((label for label, terms in SECTOR_KEYWORDS.items() if any(term in name for term in terms)), None)
+        if not sector:
+            continue
+        g = grouped.setdefault(sector, {"name": sector, "funds": 0, "flowUsd": 0, "roundTripUsd": 0, "startNetAssetsUsd": 0, "tickers": []})
+        g["funds"] += 1
+        g["flowUsd"] += row["flowUsd"]
+        g["roundTripUsd"] += row.get("roundTripUsd") or 0
+        g["startNetAssetsUsd"] += row.get("startNetAssetsUsd") or 0
+        if len(g["tickers"]) < 12:
+            g["tickers"].append(row.get("ticker"))
+    for g in grouped.values():
+        g["flowPctOfStartNetAssets"] = round(100 * g["flowUsd"] / g["startNetAssetsUsd"], 4) if g["startNetAssetsUsd"] else None
+    return sorted(grouped.values(), key=lambda x: x["flowUsd"], reverse=True)
+
 def main():
     DATA.mkdir(exist_ok=True)
     target = DATA / "flows.json"
@@ -106,6 +140,8 @@ def main():
         "total": raw.get("total", {}),
         "top_windows": top_windows,
         "categories": clean_rows(raw.get("categories", [])),
+        "sectors": sector_rollup(valid),
+        "sector_classification_note": "Stima operativa dai nomi degli ETF USA con categoria Stocks; non è una classificazione ufficiale ETFIQ e può non coprire tutti i fondi settoriali.",
         "issuers": clean_rows(raw.get("issuers", [])),
         "themes": theme_rows,
         "geographies": sorted(geos.values(), key=lambda x: x["flowUsd"], reverse=True),

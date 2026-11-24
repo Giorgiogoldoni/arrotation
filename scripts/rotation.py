@@ -87,6 +87,24 @@ def load_chart(ticker):
     except Exception:
         return ticker, None
 
+
+def market_of(row):
+    """Classifica per mercato di quotazione, non per area geografica sottostante."""
+    exchange = str(row.get("b") or "").strip().lower().replace(" ", "")
+    ticker = str(row.get("t") or "").upper()
+    us_codes = ("nyse", "nasdaq", "arca", "bats", "cboe", "amex", "nysearca", "nasdaqgs", "nasdaqgm", "nasdaqcm")
+    eu_codes = ("mil", "milan", "borsaitaliana", "xetra", "frankfurt", "gettex", "london", "lse", "euronext", "paris", "amsterdam", "brussels", "lisbon", "madrid", "swiss", "six", "zurich", "stockholm", "oslo", "copenhagen", "helsinki", "vienna", "dublin", "stuttgart", "tradegate", "borsa")
+    if any(code in exchange for code in us_codes):
+        return "USA"
+    if any(code in exchange for code in eu_codes):
+        return "UCITS Europa"
+    suffix = ticker.rsplit(".", 1)[-1] if "." in ticker else ""
+    eu_suffixes = {"MI", "DE", "AS", "PA", "L", "SW", "MC", "BR", "ST", "OL", "CO", "HE", "IR", "VI", "F", "SG", "BE", "DU", "HM", "HA", "ETR", "MU", "PR", "AT", "LS"}
+    if suffix in eu_suffixes:
+        return "UCITS Europa"
+    # Simboli senza suffisso: li includiamo negli USA solo se BIG dichiara una sede USA.
+    return None
+
 def main():
     DATA.mkdir(exist_ok=True)
     previous = DATA / "rotation.json"
@@ -150,6 +168,52 @@ def main():
                 "tickers": sorted([t for t in members if t in cache])[:12]
             })
         out.sort(key=lambda x: (x["score"], x["rel20"] or -999), reverse=True)
+        # Due universi separati per mercato di quotazione: USA-listed e UCITS negoziati in Europa.
+        market_groups = defaultdict(set)
+        market_rows = defaultdict(dict)
+        for r in eligible:
+            market = market_of(r)
+            ticker = r.get("t")
+            if not market or not ticker or ticker not in cache:
+                continue
+            market_rows[market][ticker] = r
+            for group, category in classify(r):
+                market_groups[(market, group, category)].add(ticker)
+        market_equity = defaultdict(list)
+        for market, rows_by_ticker in market_rows.items():
+            market_equity[market] = [cache[t]["ret"] for t, r in rows_by_ticker.items()
+                if str(r.get("ac") or "").lower() in ("equity", "stock", "stocks") and t in cache]
+        market_benchmarks = {m: {n: med([x[n] for x in vals]) for n in (5, 20, 60)}
+            for m, vals in market_equity.items()}
+        split_out = []
+        for (market, group, category), members in market_groups.items():
+            valid = [cache[t] for t in members if t in cache]
+            if len(valid) < 3:
+                continue
+            returns = {n: [x["ret"][n] for x in valid] for n in (5, 20, 60)}
+            breadth = round(100 * sum(1 for x in returns[20] if x > 0) / len(valid), 1)
+            r5, r20, r60 = med(returns[5]), med(returns[20]), med(returns[60])
+            bench = market_benchmarks.get(market, {})
+            rel20 = round(r20 - bench[20], 2) if bench.get(20) is not None else None
+            rel60 = round(r60 - bench[60], 2) if bench.get(60) is not None else None
+            acceleration = round(r20 - r60 / 3, 2) if r20 is not None and r60 is not None else None
+            score = round(0.40 * (rel20 or 0) + 0.25 * (rel60 or 0) + 0.20 * (acceleration or 0) + 0.10 * ((breadth - 50) / 5), 2)
+            if rel20 is not None and rel20 > 0 and breadth >= 60 and (acceleration or 0) > 0:
+                status = "Forza diffusa"
+            elif (acceleration or 0) > 0 and breadth >= 50:
+                status = "In miglioramento"
+            elif rel20 is not None and rel20 < 0 and breadth < 40:
+                status = "Perdita di forza"
+            else:
+                status = "Neutrale"
+            dates = [cache[t]["date"] for t in members if t in cache]
+            split_out.append({"market": market, "group": group, "category": category, "n": len(valid),
+                "coverage": round(100 * len(valid) / len(members), 1), "date": max(dates) if dates else None,
+                "ret5": r5, "ret20": r20, "ret60": r60, "benchmark20": bench.get(20), "benchmark60": bench.get(60),
+                "rel20": rel20, "rel60": rel60, "breadth20": breadth, "acceleration": acceleration,
+                "score": score, "status": status, "tickers": sorted(members)[:12]})
+        split_out.sort(key=lambda x: (x["market"], x["score"]), reverse=False)
+        market_coverage = {m: {"tickers": len(v), "equity": len(market_equity.get(m, []))} for m, v in market_rows.items()}
         data = {
             "version": 1, "generated": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
             "big_generated": idx.get("gen"), "latest_bar": max((x["date"] for x in cache.values()), default=None),
@@ -157,7 +221,7 @@ def main():
             "benchmark": benchmark, "actual_flows_available": False,
             "flow_note": "BIG pubblica prezzi OHLC e segnali, non flussi netti, sottoscrizioni/rimborsi o AUM. I valori sotto sono proxy di rotazione basati sui prezzi, non flussi monetari misurati.",
             "method": "Mediana dei rendimenti ETF per categoria su 5/20/60 sedute; forza relativa contro la mediana degli ETF azionari BIG; ampiezza = quota con rendimento positivo a 20 sedute; accelerazione = rendimento 20 sedute meno un terzo del rendimento 60 sedute.",
-            "categories": out
+            "categories": out,\n            "market_categories": split_out, "market_coverage": market_coverage,\n            "market_method": "Mercato identificato dalla borsa dichiarata da BIG; suffissi ticker solo come fallback. USA e UCITS Europa sono classificati per sede di negoziazione, non per esposizione geografica. Benchmark calcolato separatamente in ciascun mercato."
         }
         tmp = previous.with_suffix(".json.tmp")
         tmp.write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")

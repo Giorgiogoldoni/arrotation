@@ -48,3 +48,6 @@ Se la fonte non risponde, lo script conserva l'ultimo file valido e lo marca com
 Il `scripts/rotation.py` produce anche `market_categories`: radar di forza relativa separati per ETF negoziati negli USA e ETF UCITS negoziati sulle borse europee. La sede di negoziazione viene letta dal campo borsa di BIG; il suffisso ticker è usato solo come fallback. Il benchmark è calcolato separatamente per ciascun mercato. La dashboard confronta i settori comuni su 20 e 60 sedute e segnala convergenze/divergenze.
 
 Il radar USA dei flussi resta basato sui flussi giornalieri ETFIQ (ETF USA-listed). Il radar europeo non attribuisce flussi monetari ai prezzi: finché non è disponibile una serie UCITS omogenea e riproducibile, mostra soltanto prezzi e forza relativa. Le pubblicazioni aggregate di Amundi, EFAMA e LSEG Lipper possono essere usate come controllo esterno, ma non vengono fuse con i flussi ETFIQ perché differiscono per universo, frequenza e metodologia.
+
+
+La sezione flussi USA include un rollup settoriale operativo costruito dai nomi dei fondi con dati giornalieri validi. Non è una classificazione settoriale ufficiale ETFIQ: la dashboard lo etichetta come stima e mostra il numero di ETF inclusi. I temi usano invece il tag tematico pubblicato da ETFIQ.

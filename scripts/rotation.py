@@ -237,7 +237,9 @@ def main():
             "benchmark": benchmark, "actual_flows_available": False,
             "flow_note": "BIG pubblica prezzi OHLC e segnali, non flussi netti, sottoscrizioni/rimborsi o AUM. I valori sotto sono proxy di rotazione basati sui prezzi, non flussi monetari misurati.",
             "method": "Mediana dei rendimenti ETF per categoria su 5/20/60 sedute; forza relativa contro la mediana degli ETF azionari BIG; ampiezza = quota con rendimento positivo a 20 sedute; accelerazione = rendimento 20 sedute meno un terzo del rendimento 60 sedute.",
-            "categories": out,\n            "market_categories": split_out, "market_coverage": market_coverage,\n            "market_method": "Mercato identificato dalla borsa dichiarata da BIG; suffissi ticker solo come fallback. USA e UCITS Europa sono classificati per sede di negoziazione, non per esposizione geografica. Benchmark calcolato separatamente in ciascun mercato."
+            "categories": out,
+            "market_categories": split_out, "market_coverage": market_coverage,
+            "market_method": "Mercato identificato dalla borsa dichiarata da BIG; suffissi ticker solo come fallback. USA e UCITS Europa sono classificati per sede di negoziazione, non per esposizione geografica. Benchmark calcolato separatamente in ciascun mercato."
         }
         tmp = previous.with_suffix(".json.tmp")
         tmp.write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")

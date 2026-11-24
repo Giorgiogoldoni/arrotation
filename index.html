@@ -31,10 +31,42 @@ td.n{text-align:right}.neg{color:#c0392b}.pos{color:#1e8449}a{color:#1d4ed8;text
 #rotation .rstatus.weak{background:#fee2e2;color:#991b1b}
 #rotation .rpos{color:#15803d}#rotation .rneg{color:#b91c1c}
 @media(min-width:900px){#rotation .rgrid{grid-template-columns:1fr 1fr}}
+
+#actualflows{margin:10px 18px;padding:14px;border:1px solid #dfe3e8;border-radius:10px;background:#fff}
+#actualflows h2{margin:0 0 6px;font-size:18px}
+#actualflows h3{margin:10px 0 5px;font-size:14px}
+#actualflows .fmeta{font-size:12px;color:#64748b;margin:3px 0 10px}
+#actualflows .fgrid{display:grid;grid-template-columns:1fr;gap:12px}
+#actualflows .fkpis{display:flex;flex-wrap:wrap;gap:10px;margin:10px 0}
+#actualflows .fkpi{border:1px solid #eceef1;border-radius:8px;padding:9px 12px;min-width:135px}
+#actualflows .fkpi b{display:block;font-size:20px}
+#actualflows .fkpi span{font-size:11px;color:#64748b}
+#actualflows .ftable{overflow-x:auto}
+#actualflows table{min-width:520px;font-size:12px}
+#actualflows th{position:static}
+#actualflows .fpos{color:#15803d}#actualflows .fneg{color:#b91c1c}
+#actualflows .fdisclaimer{background:#eff6ff;border:1px solid #bfdbfe;border-radius:7px;padding:9px 10px;font-size:12px;color:#1e3a8a;margin:8px 0}
+#actualflows a{color:#2563eb}
+@media(min-width:900px){#actualflows .fgrid{grid-template-columns:1fr 1fr}}
 </style></head><body>
 <header><h1>ARRotation – Money Flow & Rotation Radar</h1><div class="sub" id="sub">Caricamento…</div></header>
 <div class="box info"><b>Screening automatico, non una raccomandazione.</b> Legge i dati pubblici di <a href="https://giorgiogoldoni.github.io/big/">big</a> e applica criteri fissi (vedi Regole PDF). Non è consulenza, non considera obiettivi, costi, tasse o liquidità di nessun investitore: ogni nominativo va verificato prima di qualunque decisione.</div>
 
+
+<section id="actualflows">
+ <h2>1. MONEY FLOW — Dove stanno andando i soldi?</h2>
+ <div class="fmeta" id="flowMeta">Caricamento flussi effettivi ETFIQ…</div>
+ <div class="fkpis" id="flowKpis"></div>
+ <div class="fdisclaimer"><b>Flussi effettivi ETF:</b> calcolati da variazioni delle quote in circolazione e NAV, non dai prezzi. La fonte copre ETF quotati negli USA, non tutto il mercato europeo UCITS. Le operazioni anomale trattenute per verifica non sono incluse nei totali. <a href="https://etfiq.com/flows/" target="_blank" rel="noopener">Fonte ETFIQ</a> · <a href="https://etfiq.com/methodology/flows" target="_blank" rel="noopener">Metodologia</a>.</div>
+ <div class="fgrid">
+  <div><h3>Flussi per asset class</h3><div class="ftable" id="flowAssets"></div></div>
+  <div><h3>Flussi per emittente</h3><div class="ftable" id="flowIssuers"></div></div>
+  <div><h3>Temi con maggiori flussi</h3><div class="ftable" id="flowThemes"></div></div>
+  <div><h3>ETF con maggiori ingressi e uscite</h3><div class="ftable" id="flowFunds"></div></div>
+  <div><h3>ETF geografici (classificazione indicativa dal nome)</h3><div class="ftable" id="flowGeos"></div></div>
+ </div>
+ <div class="fmeta" id="flowFoot"></div>
+</section>
 <section id="rotation">
  <h2>ARRotation — Money Flow & Rotation Radar</h2>
  <div class="rsub" id="rotationMeta">Caricamento radar…</div>
@@ -200,6 +232,40 @@ $("xls").onclick=()=>{if(!S)return;const wb=XLSX.utils.book_new(),add=(n,a)=>XLS
   $r('rotationNow').innerHTML='<div class="vuoto">In attesa del primo calcolo.</div>';
   $r('rotationNext').innerHTML='<div class="vuoto">In attesa del primo calcolo.</div>';
  }
+})();
+</script>
+
+<script>
+(async function(){
+ const $=id=>document.getElementById(id),safe=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+ const money=v=>{if(v==null)return 'n.d.';const n=Number(v);const a=Math.abs(n);return (n<0?'−':n>0?'+':'')+(a>=1e9?'</html>
++(a/1e9).toFixed(2)+' mld':a>=1e6?'</html>
++(a/1e6).toFixed(1)+' mln':'</html>
++Math.round(a).toLocaleString('it-IT'))};
+ const pct=v=>v==null?'n.d.':(Number(v)>0?'+':'')+Number(v).toFixed(2)+'%';
+ function rowsTable(items,labelKey){
+  if(!items||!items.length)return '<div class="sub">Nessun dato disponibile.</div>';
+  return '<table><thead><tr><th>Gruppo / ETF</th><th>Fondi</th><th>Flusso netto</th><th>% patrimonio</th><th>Round trip</th></tr></thead><tbody>'+
+   items.map(x=>'<tr><td><b>'+safe(x[labelKey])+'</b></td><td class="n">'+(x.funds??'–')+'</td><td class="n '+(x.flowUsd>=0?'fpos':'fneg')+'">'+money(x.flowUsd)+'</td><td class="n">'+pct(x.flowPctOfStartNetAssets)+'</td><td class="n">'+money(x.roundTripUsd)+'</td></tr>').join('')+'</tbody></table>';
+ }
+ try{
+  const res=await fetch('data/flows.json?'+Date.now(),{cache:'no-store'});if(!res.ok)throw Error('Dati flussi non ancora generati dal workflow');
+  const d=await res.json(),t=d.total||{},c=d.coverage||{};
+  $('flowMeta').textContent='Fonte ETFIQ · dati al '+(d.asOf||'n.d.')+' · aggiornamento ARRotation '+(d.generated||'n.d.');
+  $('flowKpis').innerHTML=[
+   [money(t.flowUsd),'flusso netto giornaliero'],[(t.funds||0).toLocaleString('it-IT'),'ETF inclusi nei totali'],[money(t.startNetAssetsUsd),'patrimonio iniziale coperto'],[pct(t.flowPctOfStartNetAssets),'flusso / patrimonio']
+  ].map(x=>'<div class="fkpi"><b>'+safe(x[0])+'</b><span>'+safe(x[1])+'</span></div>').join('');
+  $('flowAssets').innerHTML=rowsTable(d.categories,'category');
+  $('flowIssuers').innerHTML=rowsTable((d.issuers||[]).slice().sort((a,b)=>(b.flowUsd||0)-(a.flowUsd||0)).slice(0,12),'issuer');
+  const themes=(d.themes||[]).slice().sort((a,b)=>(b.flowUsd||0)-(a.flowUsd||0)).slice(0,12).map(x=>({...x,flowPctOfStartNetAssets:null,roundTripUsd:x.roundTripUsd||0}));
+  $('flowThemes').innerHTML=rowsTable(themes,'name');
+  const inflows=(d.top_inflows||[]).slice(0,7),outflows=(d.top_outflows||[]).slice(0,7);
+  const funds=[...inflows.map(x=>({...x,_side:'Ingresso'})),...outflows.map(x=>({...x,_side:'Uscita'}))];
+  $('flowFunds').innerHTML='<table><thead><tr><th>Direzione</th><th>Ticker</th><th>ETF</th><th>Flusso</th><th>% patrimonio</th></tr></thead><tbody>'+funds.map(x=>'<tr><td>'+x._side+'</td><td><b>'+safe(x.ticker)+'</b></td><td>'+safe(x.name)+'</td><td class="n '+(x.flowUsd>=0?'fpos':'fneg')+'">'+money(x.flowUsd)+'</td><td class="n">'+pct(x.flowPctOfStartNetAssets)+'</td></tr>').join('')+'</tbody></table>';
+  const geo=(d.geographies||[]).slice(0,12).map(x=>({...x,flowPctOfStartNetAssets:null,roundTripUsd:0}));
+  $('flowGeos').innerHTML=rowsTable(geo,'name');
+  $('flowFoot').textContent='Copertura: '+(c.funds_valid_rows||0)+' righe ETF valide; '+(c.held_funds||0)+' fondi trattenuti per verifica. I round trip sono mostrati separatamente e non vengono sottratti autonomamente. '+(d.limitations||'')+' Attribuzione: ETFIQ, dati al '+(d.asOf||'n.d.')+'.';
+ }catch(e){$('flowMeta').textContent=e.message+' — il riquadro si popolerà dopo il primo run dati.'}
 })();
 </script>
 </body></html>

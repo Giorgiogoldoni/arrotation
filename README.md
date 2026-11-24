@@ -32,3 +32,14 @@ Schedulazione: lunedì-venerdì alle 20:30 UTC e sabato alle 11:00 UTC. È dispo
 ## Limiti
 
 Le categorie geografiche e settoriali del radar sono assegnate con parole chiave dei nomi degli ETF e sono quindi una tassonomia operativa da controllare. I rendimenti sono mediane di ETF disponibili nell'universo BIG, non flussi di capitale. Le serie mancanti o insufficienti sono escluse; la copertura viene mostrata. Nessuna raccomandazione automatica.
+
+
+## Flussi effettivi ETFIQ
+
+`scripts/flows.py` importa ogni run il file pubblico `https://etfiq.com/data/flows/daily/latest.json` e genera `data/flows.json`. La dashboard mostra flussi giornalieri per asset class, emittente, tema, ETF singoli e un raggruppamento geografico indicativo ricavato dai nomi dei fondi.
+
+Il flusso è calcolato da ETFIQ sulle variazioni delle quote in circolazione e sul NAV, non da prezzo e volume. Sono esclusi i fondi trattenuti per revisione e le righe con stato diverso da `ok`. I round trip restano esposti separatamente, senza correzioni arbitrarie.
+
+Copertura: ETF quotati negli Stati Uniti con dato giornaliero disponibile. Non equivale all'intero mercato UCITS europeo; le categorie geografiche ricavate dai nomi sono indicative, non una misura ufficiale dell'esposizione sottostante. Attribuzione obbligatoria: ETFIQ, con data del file e link a https://etfiq.com/flows/.
+
+Se la fonte non risponde, lo script conserva l'ultimo file valido e lo marca come non aggiornato.

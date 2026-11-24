@@ -29,12 +29,10 @@ REGIONS = {
 }
 SECTORS = {
     "Tecnologia": ["technology", "tech sector", "information technology", "digitalisation", "digitalization"],
-    "Semiconduttori": ["semiconductor", "semiconductors", "soxx", "chip"],
-    "Energia": ["energy", "oil & gas", "oil and gas", "clean energy", "renewable energy"],
+    "Energia": ["energy", "oil & gas", "oil and gas"],
     "Finanziari": ["financial", "banks", "banking", "insurance"],
-    "Salute": ["health care", "healthcare", "biotech", "pharma"],
-    "Industria": ["industrials", "industrial", "aerospace", "transport"],
-    "Difesa": ["defence", "defense", "aerospace & defense", "aerospace and defense"],
+    "Salute": ["health care", "healthcare", "pharma"],
+    "Industria": ["industrials", "industrial", "transport"],
     "Consumi": ["consumer discretionary", "consumer staples", "consumer goods", "retail"],
     "Materiali": ["materials", "metals & mining", "mining", "basic resources"],
     "Utilities": ["utilities"],
@@ -111,8 +109,8 @@ def market_of(row):
     exchange = str(row.get("b") or "").strip().lower().replace(" ", "")
     ticker = str(row.get("t") or "").upper()
     isin = str(row.get("i") or "").upper()
-    us_codes = ("nyse", "nasdaq", "arca", "bats", "cboe", "amex", "nysearca")
-    eu_codes = ("mil", "milan", "borsaitaliana", "xetra", "frankfurt", "gettex", "london", "lse", "euronext", "paris", "amsterdam", "brussels", "lisbon", "madrid", "swiss", "six", "zurich", "stockholm", "oslo", "copenhagen", "helsinki", "vienna", "dublin", "stuttgart", "tradegate", "borsa")
+    us_codes = ("nyse", "nasdaq", "arca", "arcx", "bats", "cboe", "amex", "nysearca", "xnas", "xnys")
+    eu_codes = ("mil", "milan", "borsaitaliana", "xmil", "xetra", "xetr", "frankfurt", "gettex", "london", "lse", "xlon", "euronext", "paris", "xpar", "amsterdam", "xams", "brussels", "xbru", "lisbon", "xlis", "madrid", "xmad", "swiss", "six", "zurich", "xswx", "stockholm", "xsto", "oslo", "xosl", "copenhagen", "xcse", "helsinki", "xhel", "vienna", "xvie", "dublin", "xdub", "stuttgart", "tradegate", "borsa")
     if any(code in exchange for code in us_codes):
         return "USA"
     suffix = ticker.rsplit(".", 1)[-1] if "." in ticker else ""

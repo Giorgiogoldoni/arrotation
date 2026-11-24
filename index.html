@@ -48,6 +48,13 @@ td.n{text-align:right}.neg{color:#c0392b}.pos{color:#1e8449}a{color:#1d4ed8;text
 #actualflows .fdisclaimer{background:#eff6ff;border:1px solid #bfdbfe;border-radius:7px;padding:9px 10px;font-size:12px;color:#1e3a8a;margin:8px 0}
 #actualflows a{color:#2563eb}
 @media(min-width:900px){#actualflows .fgrid{grid-template-columns:1fr 1fr}}
+
+#dualradar{margin:10px 18px;padding:14px;border:1px solid #dfe3e8;border-radius:10px;background:#fff}
+#dualradar h2{font-size:18px;margin:0 0 6px}#dualradar h3{font-size:14px;margin:10px 0 5px}
+#dualradar .drmeta{font-size:12px;color:#64748b;margin:3px 0 10px}#dualradar .drgrid{display:grid;grid-template-columns:1fr;gap:12px}
+#dualradar .drtable{overflow-x:auto}#dualradar table{min-width:680px;font-size:12px}#dualradar th{position:static}
+#dualradar .drnote{font-size:12px;background:#f4f6f8;border:1px solid #dfe3e8;padding:9px;border-radius:7px;margin:8px 0}
+@media(min-width:900px){#dualradar .drgrid{grid-template-columns:1fr 1fr}}
 </style></head><body>
 <header><h1>ARRotation – Money Flow & Rotation Radar</h1><div class="sub" id="sub">Caricamento…</div></header>
 <div class="box info"><b>Screening automatico, non una raccomandazione.</b> Legge i dati pubblici di <a href="https://giorgiogoldoni.github.io/big/">big</a> e applica criteri fissi (vedi Regole PDF). Non è consulenza, non considera obiettivi, costi, tasse o liquidità di nessun investitore: ogni nominativo va verificato prima di qualunque decisione.</div>
@@ -66,6 +73,18 @@ td.n{text-align:right}.neg{color:#c0392b}.pos{color:#1e8449}a{color:#1d4ed8;text
   <div><h3>ETF geografici (classificazione indicativa dal nome)</h3><div class="ftable" id="flowGeos"></div></div>
  </div>
  <div class="fmeta" id="flowFoot"></div>
+</section>
+
+<section id="dualradar">
+ <h2>2. RADAR USA vs EUROPA UCITS</h2>
+ <div class="drmeta" id="dualMeta">Caricamento universi separati…</div>
+ <div class="drnote"><b>Metodo:</b> USA = ETF negoziati su borse statunitensi; Europa = ETF UCITS negoziati sulle borse europee riconosciute da BIG. Qui confrontiamo la forza dei prezzi, non flussi monetari. Il radar USA dei flussi effettivi resta nel riquadro MONEY FLOW qui sopra; i flussi europei non vengono stimati dai prezzi.</div>
+ <div class="drgrid">
+  <div><h3>USA — forza relativa settoriale e tematica</h3><div class="drtable" id="radarUSA"></div></div>
+  <div><h3>Europa — UCITS settoriali e tematici</h3><div class="drtable" id="radarEU"></div></div>
+ </div>
+ <h3>Confronto tra mercati — settori comuni</h3><div class="drtable" id="radarCompare"></div>
+ <div class="drmeta" id="dualFoot"></div>
 </section>
 <section id="rotation">
  <h2>ARRotation — Money Flow & Rotation Radar</h2>
@@ -87,6 +106,23 @@ td.n{text-align:right}.neg{color:#c0392b}.pos{color:#1e8449}a{color:#1d4ed8;text
 <div class="wrap"><h2>Segnalazioni in corso</h2><table><thead><tr><th>Ticker</th><th>Nome</th><th>Sistema</th><th>Segnale del</th><th>Ingresso (apertura dopo)</th><th>+5 barre</th><th>+10 barre</th><th>+20 barre</th><th>+60 barre</th></tr></thead><tbody id="th"></tbody></table></div>
 <div class="note" id="note"></div>
 <script>
+
+async function loadDualRadar(){
+ const el=id=>document.getElementById(id),fmt=x=>x==null?'–':(x>0?'+':'')+Number(x).toFixed(1)+'%',cls=x=>x==null?'':x>=0?'fpos':'fneg';
+ try{
+  const d=await fetch('data/rotation.json?'+Date.now(),{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('rotation.json non disponibile');return r.json()});
+  const rows=d.market_categories||[],usa=rows.filter(x=>x.market==='USA'&&x.group==='Settori').sort((a,b)=>b.score-a.score),eu=rows.filter(x=>x.market==='UCITS Europa'&&x.group==='Settori').sort((a,b)=>b.score-a.score);
+  const themesUSA=rows.filter(x=>x.market==='USA'&&x.group==='Settori'&&['Semiconduttori','Difesa'].includes(x.category));
+  const table=a=>a.length?'<table><thead><tr><th>Settore / tema</th><th>ETF</th><th>Rend. 20g</th><th>Rel. 20g</th><th>Rel. 60g</th><th>Ampiezza</th><th>Stato</th></tr></thead><tbody>'+a.map(x=>'<tr><td><b>'+x.category+'</b></td><td class="n">'+x.n+'</td><td class="n '+cls(x.ret20)+'">'+fmt(x.ret20)+'</td><td class="n '+cls(x.rel20)+'">'+fmt(x.rel20)+'</td><td class="n '+cls(x.rel60)+'">'+fmt(x.rel60)+'</td><td class="n">'+(x.breadth20??'–')+'%</td><td>'+x.status+'</td></tr>').join('')+'</tbody></table>':'<div class="vuoto">Nessun gruppo con copertura sufficiente per questo mercato. Verificare il campo borsa nell’universo BIG.</div>';
+  el('radarUSA').innerHTML=table(usa);el('radarEU').innerHTML=table(eu);
+  const map=a=>Object.fromEntries(a.map(x=>[x.category,x]));const um=map(usa),em=map(eu),keys=[...new Set([...Object.keys(um),...Object.keys(em)])].sort();
+  const common=keys.filter(k=>um[k]&&em[k]);el('radarCompare').innerHTML=common.length?'<table><thead><tr><th>Settore</th><th>USA rel. 20g</th><th>Europa rel. 20g</th><th>Confronto</th></tr></thead><tbody>'+common.map(k=>{const a=um[k],b=em[k],same=Math.sign(a.rel20||0)===Math.sign(b.rel20||0),label=same?'Convergenti':'Divergenti';return '<tr><td><b>'+k+'</b></td><td class="n '+cls(a.rel20)+'">'+fmt(a.rel20)+'</td><td class="n '+cls(b.rel20)+'">'+fmt(b.rel20)+'</td><td>'+label+'</td></tr>'}).join('')+'</tbody></table>':'<div class="vuoto">Nessun settore comune con almeno tre ETF validi in entrambi i mercati.</div>';
+  const mc=d.market_coverage||{};el('dualMeta').textContent='Ultima barra: '+(d.latest_bar||'n.d.')+' · BIG universe: '+(d.universe||0)+' ETF · classificazione per borsa e suffisso ticker.';
+  el('dualFoot').textContent='Copertura classificata: USA '+(mc.USA?.tickers||0)+' ticker caricati; Europa UCITS '+(mc['UCITS Europa']?.tickers||0)+' ticker caricati. Benchmark relativo calcolato separatamente per ciascun mercato. La categoria tematica resta una classificazione operativa basata sul nome ETF; non equivale a flussi.';
+ }catch(e){el('dualMeta').textContent=e.message+' — il radar separato apparirà dopo il prossimo run di Aggiorna arrotation.'}
+}
+loadDualRadar();
+
 const $=id=>document.getElementById(id),esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])).replace(/'/g,"’");
 const f=(x,d=2)=>x==null?"–":(x>0?"+":"")+Number(x).toFixed(d),cl=x=>x==null?"":x<0?"neg":"pos";
 let S=null,H=null;

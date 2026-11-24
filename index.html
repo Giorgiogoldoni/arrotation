@@ -249,8 +249,21 @@ $("xls").onclick=()=>{if(!S)return;const wb=XLSX.utils.book_new(),add=(n,a)=>XLS
    items.map(x=>'<tr><td><b>'+safe(x[labelKey])+'</b></td><td class="n">'+(x.funds??'–')+'</td><td class="n '+(x.flowUsd>=0?'fpos':'fneg')+'">'+money(x.flowUsd)+'</td><td class="n">'+pct(x.flowPctOfStartNetAssets)+'</td><td class="n">'+money(x.roundTripUsd)+'</td></tr>').join('')+'</tbody></table>';
  }
  try{
-  const res=await fetch('data/flows.json?'+Date.now(),{cache:'no-store'});if(!res.ok)throw Error('Dati flussi non ancora generati dal workflow');
-  const d=await res.json(),t=d.total||{},c=d.coverage||{};
+  let d;
+  try{
+   const res=await fetch('data/flows.json?'+Date.now(),{cache:'no-store'});
+   if(!res.ok)throw Error('snapshot locale non disponibile');
+   d=await res.json();
+  }catch(localError){
+   const live=await fetch('https://etfiq.com/data/flows/daily/latest.json',{cache:'no-store'});
+   if(!live.ok)throw localError;
+   const raw=await live.json(),valid=(raw.funds||[]).filter(x=>!x.held&&x.status==='ok'&&typeof x.flowUsd==='number');
+   const grouped=(key)=>{const m={};valid.forEach(x=>{const k=x[key];if(!k)return;const g=m[k]||(m[k]={name:k,funds:0,flowUsd:0,roundTripUsd:0,tickers:[]});g.funds++;g.flowUsd+=x.flowUsd;g.roundTripUsd+=(x.roundTripUsd||0);if(g.tickers.length<8)g.tickers.push(x.ticker)});return Object.values(m)};
+   const terms={'Cina':['china','chinese','hang seng','csi 300'],'Giappone':['japan','japanese','nikkei','topix'],'India':['india','indian','nifty'],'Europa':['europe','european','euro stoxx','stoxx europe'],'Regno Unito':['united kingdom','uk equity','ftse 100'],'Germania':['germany','dax'],'Francia':['france','cac 40'],'Italia':['italy','italian'],'Brasile':['brazil','brazilian','bovespa'],'Messico':['mexico','mexican'],'Corea del Sud':['south korea','korea','kospi'],'Taiwan':['taiwan']},geo={};
+   valid.forEach(x=>{const n=String(x.name||'').toLowerCase();for(const [label,words] of Object.entries(terms)){if(words.some(w=>n.includes(w))){const g=geo[label]||(geo[label]={name:label,funds:0,flowUsd:0,tickers:[]});g.funds++;g.flowUsd+=x.flowUsd;if(g.tickers.length<8)g.tickers.push(x.ticker);break}}});
+   d={asOf:raw.asOf,generated:'lettura diretta ETFIQ',total:raw.total,coverage:{funds_valid_rows:valid.length,held_funds:raw.total?.heldFunds},categories:raw.categories||[],issuers:raw.issuers||[],themes:grouped('theme').sort((a,b)=>b.flowUsd-a.flowUsd),geographies:Object.values(geo).sort((a,b)=>b.flowUsd-a.flowUsd),top_inflows:[...valid].sort((a,b)=>b.flowUsd-a.flowUsd).slice(0,15),top_outflows:[...valid].sort((a,b)=>a.flowUsd-b.flowUsd).slice(0,15),limitations:'Flussi giornalieri su ETF quotati negli USA; non coprono l’intero mercato UCITS europeo. Le aree geografiche sono classificate in modo indicativo dal nome del fondo.'};
+  }
+  const t=d.total||{},c=d.coverage||{};
   $('flowMeta').textContent='Fonte ETFIQ · dati al '+(d.asOf||'n.d.')+' · aggiornamento ARRotation '+(d.generated||'n.d.')+(d.stale?' · ATTENZIONE: ultimo dato conservato, fonte non aggiornata':'');
   $('flowKpis').innerHTML=[
    [money(t.flowUsd),'flusso netto giornaliero'],[(t.funds||0).toLocaleString('it-IT'),'ETF inclusi nei totali'],[money(t.startNetAssetsUsd),'patrimonio iniziale coperto'],[pct(t.flowPctOfStartNetAssets),'flusso / patrimonio']

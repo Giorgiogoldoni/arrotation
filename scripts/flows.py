@@ -22,7 +22,18 @@ def clean_rows(rows):
 
 def main():
     DATA.mkdir(exist_ok=True)
-    raw = fetch()
+    target = DATA / "flows.json"
+    try:
+        raw = fetch()
+    except Exception as exc:
+        if target.exists():
+            old = json.loads(target.read_text(encoding="utf-8"))
+            old["stale"] = True
+            old["fetchError"] = str(exc)[:300]
+            target.write_text(json.dumps(old, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+            print("ETFIQ flows unavailable; retained last valid snapshot:", exc)
+            return
+        raise
     if raw.get("schemaVersion") != 1 or raw.get("basis") != "daily":
         raise RuntimeError("Schema ETFIQ inatteso: nessun dato aggiornato pubblicato")
     funds = clean_rows(raw.get("funds", []))
@@ -92,7 +103,6 @@ def main():
         "round_trip_note": "flowUsd include i round trip segnalati separatamente in roundTripUsd. Mostrare entrambi; non sottrarre il secondo senza seguire la metodologia ETFIQ.",
         "limitations": "Flussi ETF giornalieri USA-listed; non coprono l'intero universo UCITS europeo. I flussi misurano creazioni/rimborsi nette degli ETF, non l'identità o la direzione di ogni investitore."
     }
-    target = DATA / "flows.json"
     tmp = target.with_suffix(".json.tmp")
     tmp.write_text(json.dumps(result, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     tmp.replace(target)

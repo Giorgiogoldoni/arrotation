@@ -13,10 +13,13 @@ URL = "https://etfiq.com/data/flows/daily/latest.json"
 AGG_URL = "https://etfiq.com/data/flows/aggregates.json"
 UA = "ARRotation/1.0 (ETFIQ attribution: https://etfiq.com/flows/)"
 
-def fetch():
-    req = urllib.request.Request(URL, headers={"User-Agent": UA, "Accept": "application/json"})
+def get_json(url):
+    req = urllib.request.Request(url, headers={"User-Agent": UA, "Accept": "application/json"})
     with urllib.request.urlopen(req, timeout=45) as response:
         return json.loads(response.read().decode("utf-8"))
+
+def fetch():
+    return get_json(URL)
 
 def clean_rows(rows):
     return [r for r in rows if isinstance(r, dict)]

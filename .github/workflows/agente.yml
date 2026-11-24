@@ -29,6 +29,9 @@ jobs:
       - name: Calcola radar di rotazione da BIG
         if: always()
         run: python scripts/rotation.py
+      - name: Importa flussi ETF effettivi ETFIQ
+        if: always()
+        run: python scripts/flows.py
       - name: Salva i dati (anche se l'agente ha segnalato un errore)
         if: always()
         run: |

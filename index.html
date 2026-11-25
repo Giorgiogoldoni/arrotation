@@ -217,9 +217,9 @@ $("xls").onclick=()=>{if(!S)return;const wb=XLSX.utils.book_new(),add=(n,a)=>XLS
 <div id="chartModal" role="dialog" aria-modal="true" aria-label="Grafico ETF">
  <div id="chartPanel">
   <div id="chartHead"><div><h2 id="chartTitle">Grafico ETF</h2><div id="chartMeta">Caricamento storico…</div></div><button id="chartClose" aria-label="Chiudi">×</button></div>
-  <div class="chartLegend"><span style="color:#16a34a">Candela rialzista</span><span style="color:#dc2626">Candela ribassista</span><span style="color:#2563eb">Donchian 20</span><span style="color:#d97706">KAMA</span><span style="color:#9333ea">Parabolic SAR</span></div>
+  <div class="chartLegend"><span style="color:#16a34a">Heikin-Ashi rialzista</span><span style="color:#dc2626">Heikin-Ashi ribassista</span><span style="color:#2563eb">Donchian 20</span><span style="color:#d97706">KAMA</span><span style="color:#9333ea">Parabolic SAR</span></div>
   <div id="chartStatus" class="sub"></div>
-  <svg id="chartSvg" viewBox="0 0 1000 520" role="img" aria-label="Grafico a candele con indicatori"></svg>
+  <svg id="chartSvg" viewBox="0 0 1000 520" role="img" aria-label="Grafico Heikin-Ashi con indicatori"></svg>
  </div>
 </div>
 <script>
@@ -237,6 +237,16 @@ $("xls").onclick=()=>{if(!S)return;const wb=XLSX.utils.book_new(),add=(n,a)=>XLS
    prev=prev==null?values[i-period]:prev+sc*(values[i]-prev);out[i]=prev;
   }return out;
  }
+ function heikinAshi(rows){
+  let prevOpen=null,prevClose=null;
+  return rows.map(r=>{
+   const o=+r[1],h=+r[2],l=+r[3],c=+r[4],haClose=(o+h+l+c)/4;
+   const haOpen=prevOpen==null?(o+c)/2:(prevOpen+prevClose)/2;
+   const haHigh=Math.max(h,haOpen,haClose),haLow=Math.min(l,haOpen,haClose);
+   prevOpen=haOpen;prevClose=haClose;
+   return [r[0],haOpen,haHigh,haLow,haClose];
+  });
+ }
  function psar(rows,step=.02,max=.2){
   const out=Array(rows.length).fill(null);if(rows.length<2)return out;
   let bull=rows[1][4]>=rows[0][4],af=step,ep=bull?Math.max(rows[0][2],rows[1][2]):Math.min(rows[0][3],rows[1][3]),sar=bull?Math.min(rows[0][3],rows[1][3]):Math.max(rows[0][2],rows[1][2]);
@@ -253,7 +263,7 @@ $("xls").onclick=()=>{if(!S)return;const wb=XLSX.utils.book_new(),add=(n,a)=>XLS
  async function show(ticker,name){
   modal.style.display='block';document.body.style.overflow='hidden';
   document.getElementById('chartTitle').textContent=ticker+' — '+(name||'');
-  document.getElementById('chartMeta').textContent='Storico giornaliero · candele OHLC · Donchian 20 · KAMA 10 · Parabolic SAR 0,02/0,20';
+  document.getElementById('chartMeta').textContent='Storico giornaliero · Heikin-Ashi · Donchian 20 · KAMA 10 · Parabolic SAR 0,02/0,20';
   document.getElementById('chartStatus').textContent='Caricamento dati…';
   document.getElementById('chartSvg').innerHTML='';
   try{
@@ -261,24 +271,25 @@ $("xls").onclick=()=>{if(!S)return;const wb=XLSX.utils.book_new(),add=(n,a)=>XLS
    const res=await fetch(url,{cache:'no-cache'});if(!res.ok)throw Error('Storico non disponibile ('+res.status+')');
    const json=await res.json();let rows=(json.d||[]).filter(x=>Array.isArray(x)&&x.length>=5&&x.slice(1,5).every(v=>Number.isFinite(Number(v)))).slice(-120);
    if(rows.length<3)throw Error('Storico insufficiente per disegnare il grafico.');
-   const highs=rows.map(x=>+x[2]),lows=rows.map(x=>+x[3]),closes=rows.map(x=>+x[4]),ks=kama(closes),ss=psar(rows);
+   const ha=heikinAshi(rows),highs=rows.map(x=>+x[2]),lows=rows.map(x=>+x[3]),closes=rows.map(x=>+x[4]),haHighs=ha.map(x=>x[2]),haLows=ha.map(x=>x[3]),ks=kama(closes),ss=psar(rows);
    const upper=rows.map((_,i)=>i<19?null:Math.max(...highs.slice(i-19,i+1))),lower=rows.map((_,i)=>i<19?null:Math.min(...lows.slice(i-19,i+1)));
-   const lo=Math.min(...lows,...ss.filter(Number.isFinite)),hi=Math.max(...highs,...ss.filter(Number.isFinite)),pad=(hi-lo)*.08||1;
+   const lo=Math.min(...haLows,...lows,...ss.filter(Number.isFinite),...upper.filter(Number.isFinite)),hi=Math.max(...haHighs,...highs,...ss.filter(Number.isFinite),...upper.filter(Number.isFinite)),pad=(hi-lo)*.08||1;
    const min=lo-pad,max=hi+pad,left=65,right=980,top=25,bottom=450,w=right-left,h=bottom-top;
    const X=i=>left+(i+.5)*w/rows.length,Y=v=>bottom-(v-min)/(max-min)*h;
    for(let j=0;j<=5;j++){const val=min+(max-min)*j/5,y=Y(val);el('line',{x1:left,y1:y,x2:right,y2:y,stroke:'#e5e7eb'});const tx=el('text',{x:8,y:y+4,fill:'#64748b','font-size':12});tx.textContent=fmt(val)}
-   rows.forEach((r,i)=>{const x=X(i),up=+r[4]>=+r[1],color=up?'#16a34a':'#dc2626',bw=Math.max(2,Math.min(7,w/rows.length*.62));
-    el('line',{x1:x,y1:Y(+r[2]),x2:x,y2:Y(+r[3]),stroke:color,'stroke-width':1.3});
-    const y=Math.min(Y(+r[1]),Y(+r[4])),height=Math.max(1.5,Math.abs(Y(+r[1])-Y(+r[4])));
-    el('rect',{x:x-bw/2,y,width:bw,height,fill:color,stroke:color});
+   ha.forEach((r,i)=>{const x=X(i),real=rows[i],up=r[4]>=r[1],color=up?'#16a34a':'#dc2626',bw=Math.max(2,Math.min(7,w/rows.length*.62));
+    el('line',{x1:x,y1:Y(r[2]),x2:x,y2:Y(r[3]),stroke:color,'stroke-width':1.3});
+    const y=Math.min(Y(r[1]),Y(r[4])),height=Math.max(1.5,Math.abs(Y(r[1])-Y(r[4])));
+    const candle=el('rect',{x:x-bw/2,y,width:bw,height,fill:color,stroke:color});
+    const tip=el('title',{},candle);tip.textContent=real[0]+' · OHLC reale: '+[real[1],real[2],real[3],real[4]].map(fmt).join(' / ')+' · HA: '+[r[1],r[2],r[3],r[4]].map(fmt).join(' / ');
    });
    pathLine(upper.map((v,i)=>v==null?null:[X(i),Y(v)]),'#2563eb',1.5);
    pathLine(lower.map((v,i)=>v==null?null:[X(i),Y(v)]),'#2563eb',1.5);
    pathLine(ks.map((v,i)=>v==null?null:[X(i),Y(v)]),'#d97706',2);
    ss.forEach((v,i)=>{if(v!=null)el('circle',{cx:X(i),cy:Y(v),r:2.5,fill:'#9333ea'})});
    [0,Math.floor(rows.length/2),rows.length-1].forEach(i=>{const tx=el('text',{x:X(i),y:480,fill:'#64748b','font-size':12,'text-anchor':'middle'});tx.textContent=rows[i][0]});
-   const last=rows[rows.length-1],prev=rows[rows.length-2],change=(+last[4]/+prev[4]-1)*100;
-   document.getElementById('chartStatus').textContent=rows.length+' barre · Ultima chiusura '+fmt(last[4])+' · variazione ultima barra '+(change>=0?'+':'')+change.toFixed(2)+'% · dati aggiornati al '+last[0];
+   const last=rows[rows.length-1],prev=rows[rows.length-2],lastHa=ha[ha.length-1],change=(+last[4]/+prev[4]-1)*100;
+   document.getElementById('chartStatus').textContent=rows.length+' barre · Ultimo prezzo reale '+fmt(last[4])+' · variazione reale ultima barra '+(change>=0?'+':'')+change.toFixed(2)+'% · candela Heikin-Ashi '+(lastHa[4]>=lastHa[1]?'rialzista':'ribassista')+' · dati aggiornati al '+last[0]+' · Indicatori calcolati sui prezzi OHLC reali.'
   }catch(e){document.getElementById('chartStatus').textContent=e.message+' — puoi comunque aprire il grafico originale in BIG.';const a=document.createElement('a');a.href='https://giorgiogoldoni.github.io/big/grafico.html?t='+encodeURIComponent(ticker);a.target='_blank';a.rel='noopener';a.textContent='Apri grafico BIG';document.getElementById('chartStatus').append(' ',a)}
  }
  document.addEventListener('click',e=>{const a=e.target.closest('a');if(!a||!a.href.includes('grafico.html?t='))return;const u=new URL(a.href);if(u.hostname!=='giorgiogoldoni.github.io'||!u.pathname.includes('/big/grafico.html'))return;e.preventDefault();const ticker=u.searchParams.get('t');const row=a.closest('tr');show(ticker,row&&row.cells[1]?row.cells[1].textContent:'')});

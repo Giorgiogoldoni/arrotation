@@ -75,6 +75,19 @@ th{background:#f4f7fa;color:#42566d}input,button,select{border-color:#d5dee8;col
 button{font-weight:600}button:hover{background:#edf3f9}
 @media(max-width:600px){header{padding:18px 15px 8px}.hero{margin:12px 10px;padding:19px 17px}.box{margin-left:10px;margin-right:10px}.bar,.wrap{padding-left:12px;padding-right:12px}#actualflows,#dualradar,#rotation{margin:10px;padding:12px}}
 
+
+#rotationMap{margin:10px 18px;padding:14px;border:1px solid #cbd5e1;border-radius:10px;background:#fff}
+#rotationMap h2{font-size:18px;margin:0 0 4px}
+#rotationMap .mapHead{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+#rotationMap .mapMeta,#rotationMap .mapMethod{font-size:12px;color:#64748b;margin:5px 0 10px}
+#rotationMap .mapControls{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+#rotationMap select{font:inherit;border:1px solid #cbd5e1;border-radius:6px;padding:6px 9px;background:#fff}
+#rotationMap .mapFrame{border:1px solid #e2e8f0;border-radius:8px;overflow:hidden}
+#rotationMap svg{display:block;width:100%;height:auto;min-height:300px;background:#fbfcfe}
+#rotationMap .mapLegend{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:#475569;margin:8px 0}
+#rotationMap .mapLegend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:4px}
+#rotationMap .mapFoot{font-size:11px;color:#64748b;margin-top:8px}
+@media(max-width:600px){#rotationMap{margin:8px 10px;padding:10px}#rotationMap svg{min-height:260px}}
 </style></head><body>
 <header><h1>ARRotation</h1><div class="sub" id="sub">Global ETF Market Intelligence · Caricamento dati…</div></header>
 <section class="hero" aria-label="Presentazione ARRotation">
@@ -114,7 +127,16 @@ button{font-weight:600}button:hover{background:#edf3f9}
  <h3>Confronto tra mercati — settori e temi comuni</h3><div class="drtable" id="radarCompare"></div>
  <div class="drmeta" id="dualFoot"></div>
 </section>
-<section id="rotation">
+
+<section id="rotationMap">
+ <div class="mapHead"><div><h2>3. MAPPA TECNICA DELLA ROTAZIONE</h2><div class="mapMeta" id="mapMeta">Caricamento dati di forza relativa…</div></div>
+ <div class="mapControls"><label for="mapGroup">Universo:</label><select id="mapGroup"><option value="Tutti">Tutti</option><option value="Settori">Settori</option><option value="Temi">Temi</option><option value="Geografia">Geografia</option><option value="Asset class">Asset class</option></select></div></div>
+ <div class="mapMethod">Matrice quantitativa: asse X = forza relativa a 20 sedute vs benchmark; asse Y = accelerazione (rendimento 20g meno 1/3 del 60g). Dimensione del cerchio = ampiezza positiva. La mappa individua leadership, accelerazione e deterioramento: non rappresenta flussi monetari misurati.</div>
+ <div class="mapFrame"><svg id="rotationMapSvg" viewBox="0 0 1000 570" role="img" aria-label="Matrice tecnica della forza relativa e accelerazione delle categorie ETF"></svg></div>
+ <div class="mapLegend"><span><i style="background:#2563eb"></i>Geografia</span><span><i style="background:#0f766e"></i>Settori</span><span><i style="background:#7c3aed"></i>Temi</span><span><i style="background:#64748b"></i>Asset class</span></div>
+ <div class="mapFoot" id="mapFoot">Fonte: BIG · dati al giorno indicato nel file rotation.json. Passa sui punti per leggere i valori; seleziona un gruppo per isolare l'universo.</div>
+</section>
+\n<section id="rotation">
  <h2>ARRotation — Money Flow & Rotation Radar</h2>
  <div class="rsub" id="rotationMeta">Caricamento radar…</div>
  <div class="rkpis" id="rotationKpis"></div>
@@ -341,4 +363,53 @@ $("xls").onclick=()=>{if(!S)return;const wb=XLSX.utils.book_new(),add=(n,a)=>XLS
  }catch(e){$('flowMeta').textContent=e.message+' — il riquadro si popolerà dopo il primo run dati.'}
 })();
 </script>
-</body></html>
+
+<script>
+(async function(){
+ const meta=document.getElementById('mapMeta'),svg=document.getElementById('rotationMapSvg'),sel=document.getElementById('mapGroup');
+ const NS='http://www.w3.org/2000/svg';
+ const colors={'Geografia':'#2563eb','Settori':'#0f766e','Temi':'#7c3aed','Asset class':'#64748b'};
+ const node=(tag,attrs={},parent=svg)=>{const e=document.createElementNS(NS,tag);Object.entries(attrs).forEach(([k,v])=>e.setAttribute(k,v));parent.appendChild(e);return e};
+ const fmt=v=>(v>0?'+':'')+Number(v).toFixed(1)+'%';
+ let rows=[];
+ function draw(){
+  svg.innerHTML='';
+  const W=1000,H=570,L=76,R=28,T=32,B=65,iw=W-L-R,ih=H-T-B;
+  let data=rows.filter(x=>(sel.value==='Tutti'||x.group===sel.value)&&Number.isFinite(+x.rel20)&&Number.isFinite(+x.acceleration));
+  if(!data.length){node('text',{x:W/2,y:H/2,'text-anchor':'middle',fill:'#64748b','font-size':18}).textContent='Nessun dato disponibile per il filtro selezionato';return}
+  const minX=Math.min(-5,...data.map(x=>+x.rel20)),maxX=Math.max(5,...data.map(x=>+x.rel20));
+  const minY=Math.min(-5,...data.map(x=>+x.acceleration)),maxY=Math.max(5,...data.map(x=>+x.acceleration));
+  const px=v=>L+(v-minX)/(maxX-minX)*iw,py=v=>T+ih-(v-minY)/(maxY-minY)*ih;
+  const zeroX=px(0),zeroY=py(0);
+  node('rect',{x:L,y:T,width:Math.max(0,zeroX-L),height:Math.max(0,zeroY-T),fill:'#ecfdf5'});
+  node('rect',{x:zeroX,y:T,width:Math.max(0,W-R-zeroX),height:Math.max(0,zeroY-T),fill:'#eff6ff'});
+  node('rect',{x:L,y:zeroY,width:Math.max(0,zeroX-L),height:Math.max(0,H-B-zeroY),fill:'#fff7ed'});
+  node('rect',{x:zeroX,y:zeroY,width:Math.max(0,W-R-zeroX),height:Math.max(0,H-B-zeroY),fill:'#fef2f2'});
+  for(let i=0;i<=5;i++){
+   const xv=minX+(maxX-minX)*i/5,yv=minY+(maxY-minY)*i/5,x=px(xv),y=py(yv);
+   node('line',{x1:x,y1:T,x2:x,y2:H-B,stroke:'#e2e8f0','stroke-width':1});
+   node('line',{x1:L,y1:y,x2:W-R,y2:y,stroke:'#e2e8f0','stroke-width':1});
+   node('text',{x,y:H-B+22,'text-anchor':'middle',fill:'#64748b','font-size':12}).textContent=fmt(xv);
+   node('text',{x:L-12,y:y+4,'text-anchor':'end',fill:'#64748b','font-size':12}).textContent=fmt(yv);
+  }
+  node('line',{x1:zeroX,y1:T,x2:zeroX,y2:H-B,stroke:'#64748b','stroke-width':1.8,'stroke-dasharray':'5 4'});
+  node('line',{x1:L,y1:zeroY,x2:W-R,y2:zeroY,stroke:'#64748b','stroke-width':1.8,'stroke-dasharray':'5 4'});
+  node('text',{x:L+10,y:T+18,fill:'#166534','font-size':12,'font-weight':700}).textContent='LEADERSHIP + ACCELERAZIONE';
+  node('text',{x:W-R-10,y:T+18,'text-anchor':'end',fill:'#1d4ed8','font-size':12,'font-weight':700}).textContent='FORZA RELATIVA POSITIVA';
+  node('text',{x:L+10,y:H-B-12,fill:'#b45309','font-size':12,'font-weight':700}).textContent='DEBOLEZZA';
+  node('text',{x:W-R-10,y:H-B-12,'text-anchor':'end',fill:'#b91c1c','font-size':12,'font-weight':700}).textContent='PERDITA DI SLANCIO';
+  node('text',{x:L+iw/2,y:H-12,'text-anchor':'middle',fill:'#334155','font-size':14,'font-weight':700}).textContent='FORZA RELATIVA A 20 SEDUTE →';
+  node('text',{x:18,y:T+ih/2,transform:'rotate(-90 18 '+(T+ih/2)+')','text-anchor':'middle',fill:'#334155','font-size':14,'font-weight':700}).textContent='ACCELERAZIONE →';
+  data.forEach(d=>{
+   const breadth=Math.max(0,Math.min(100,+d.breadth20||0)),rad=5+breadth*.105,c=node('circle',{cx:px(+d.rel20),cy:py(+d.acceleration),r:rad,fill:colors[d.group]||'#64748b',opacity:.78,stroke:'#fff','stroke-width':1.5});
+   const title=node('title',{},c);title.textContent=d.category+' · Rel.20g '+fmt(d.rel20)+' · Accelerazione '+fmt(d.acceleration)+' · Ampiezza '+breadth.toFixed(0)+'% · ETF '+d.n;
+  });
+  const labels=data.slice().sort((a,b)=>(+b.score||0)-(+a.score||0)).slice(0,Math.min(14,data.length));
+  labels.forEach(d=>{node('text',{x:px(+d.rel20)+8,y:py(+d.acceleration)-7,fill:'#1e293b','font-size':11,'font-weight':600,'paint-order':'stroke','stroke':'#fff','stroke-width':3,'stroke-linejoin':'round'}).textContent=d.category});
+  meta.textContent=data.length+' categorie · '+(data[0].date||'')+' · benchmark 20g '+fmt(rows[0]?.benchmark20||0)+' · aggiornamento '+(window.mapGenerated||'BIG');
+ }
+ try{const d=await fetch('data/rotation.json?'+Date.now(),{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('rotation.json non disponibile');return r.json()});rows=d.categories||[];window.mapGenerated=d.generated||'';meta.textContent='Ultima barra '+(d.latest_bar||'n.d.')+' · '+rows.length+' categorie · Universo '+(d.universe||'n.d.')+' ETF';draw();sel.addEventListener('change',draw)}
+ catch(e){meta.textContent='Mappa non disponibile: '+e.message}
+})();
+</script>
+\n</body></html>

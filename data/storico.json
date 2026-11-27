@@ -232,9 +232,31 @@
      "eccesso": -3.9
     }
    }
+  },
+  {
+   "k": "ECE.MI|k5|2026-11-26",
+   "t": "ECE.MI",
+   "nome": "UBS BBG MSCI Global Liquid Corp Sustainable UCITS ETF hEUR acc",
+   "sistema": "k5",
+   "sistema_nome": "Kamal 5",
+   "data_segnale": "2026-11-26",
+   "registrata": "2026-11-27",
+   "famiglie": [
+    "Trend",
+    "Indicatori"
+   ],
+   "confluenza": 2,
+   "classifica": {
+    "orizzonte": "20",
+    "eccesso": 0.4,
+    "n": 17,
+    "positivi": 65
+   },
+   "ingresso": null,
+   "esiti": {}
   }
  ],
  "chiuse": [],
  "versione": 1,
- "aggiornato": "2026-11-27 18:22 UTC"
+ "aggiornato": "2026-11-27 18:23 UTC"
 }

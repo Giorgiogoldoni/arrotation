@@ -13,7 +13,7 @@ from collections import defaultdict
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / "data"
-BIG = "https://giorgiogoldoni.github.io/big/data/"
+BIG = "https://giorgiogoldoni.github.io/BIGCHATGPT/data/"
 UA = "ARRotation/2.0 (public ETF rotation monitor)"
 
 # Tassonomia per parole chiave nei nomi ufficiali degli ETF. Le categorie sono proxy:

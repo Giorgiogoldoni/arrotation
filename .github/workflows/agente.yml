@@ -1,6 +1,12 @@
 name: Aggiorna arrotation
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/agente.py'
+      - 'scripts/rotation.py'
+      - '.github/workflows/agente.yml'
   schedule:
     - cron: '0 10 * * *'   # ~11:00 Italia (inverno)
     - cron: '0 22 * * *'   # ~23:00 Italia (inverno))

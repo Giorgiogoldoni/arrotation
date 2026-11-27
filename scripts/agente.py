@@ -10,7 +10,7 @@ import numpy as np
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / "data"
-SITO_BIG = "https://giorgiogoldoni.github.io/big/"
+SITO_BIG = "https://giorgiogoldoni.github.io/BIGCHATGPT/"
 BIG = os.environ.get("BIG_BASE", SITO_BIG + "data/").rstrip("/") + "/"
 OGGI = dt.date.fromisoformat(os.environ["ARROTATION_OGGI"]) if os.environ.get("ARROTATION_OGGI") else dt.datetime.now(dt.timezone.utc).date()
 
